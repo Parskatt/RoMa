@@ -45,6 +45,8 @@ torchrun --nproc_per_node=4 --nnodes=1 --rdzv_backend=c10d experiments/roma_outd
 ```bash
 python experiments/roma_outdoor.py --only_test --benchmark mega-1500
 ```
+## License
+Due to our dependency on [DINOv2](https://github.com/facebookresearch/dinov2/blob/main/LICENSE), the license is sadly non-commercial only for the moment.
 
 ## Acknowledgement
 Our codebase builds on the code in [DKM](https://github.com/Parskatt/DKM).
