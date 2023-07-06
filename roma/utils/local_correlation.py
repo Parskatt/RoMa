@@ -43,5 +43,4 @@ def local_correlation(
             )
             window_feature = window_feature.reshape(c,h,w,(2*r+1)**2)
         corr[_] = (feature0[_,...,None]/(c**.5)*window_feature).sum(dim=0).permute(2,0,1)
-    torch.cuda.empty_cache()
     return corr
