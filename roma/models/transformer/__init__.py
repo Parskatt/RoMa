@@ -9,7 +9,7 @@ from .dinov2 import vit_large
 
 class TransformerDecoder(nn.Module):
     def __init__(self, blocks, hidden_dim, out_dim, is_classifier = False, *args, 
-                 amp = False, pos_enc = True, learned_embeddings = False, embedding_dim = None, **kwargs) -> None:
+                 amp = False, pos_enc = True, learned_embeddings = False, embedding_dim = None, amp_dtype = torch.float16, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.blocks = blocks
         self.to_out = nn.Linear(hidden_dim, out_dim)
@@ -18,7 +18,7 @@ class TransformerDecoder(nn.Module):
         self._scales = [16]
         self.is_classifier = is_classifier
         self.amp = amp
-        self.amp_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+        self.amp_dtype = amp_dtype
         self.pos_enc = pos_enc
         self.learned_embeddings = learned_embeddings
         if self.learned_embeddings:

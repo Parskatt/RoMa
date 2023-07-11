@@ -38,6 +38,7 @@ class ConvRefiner(nn.Module):
         sample_mode = "bilinear",
         norm_type = nn.BatchNorm2d,
         bn_momentum = 0.1,
+        amp_dtype = torch.float16,
     ):
         super().__init__()
         self.bn_momentum = bn_momentum
@@ -72,7 +73,7 @@ class ConvRefiner(nn.Module):
         self.disable_local_corr_grad = disable_local_corr_grad
         self.is_classifier = is_classifier
         self.sample_mode = sample_mode
-        self.amp_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+        self.amp_dtype = amp_dtype
         
     def create_block(
         self,
@@ -275,7 +276,7 @@ class Decoder(nn.Module):
     def __init__(
         self, embedding_decoder, gps, proj, conv_refiner, detach=False, scales="all", pos_embeddings = None,
         num_refinement_steps_per_scale = 1, warp_noise_std = 0.0, displacement_dropout_p = 0.0, gm_warp_dropout_p = 0.0,
-        flow_upsample_mode = "bilinear"
+        flow_upsample_mode = "bilinear", amp_dtype = torch.float16,
     ):
         super().__init__()
         self.embedding_decoder = embedding_decoder
@@ -297,7 +298,7 @@ class Decoder(nn.Module):
         self.displacement_dropout_p = displacement_dropout_p
         self.gm_warp_dropout_p = gm_warp_dropout_p
         self.flow_upsample_mode = flow_upsample_mode
-        self.amp_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+        self.amp_dtype = amp_dtype
         
     def get_placeholder_flow(self, b, h, w, device):
         coarse_coords = torch.meshgrid(
@@ -361,7 +362,7 @@ class Decoder(nn.Module):
             corresps[ins] = {}
             f1_s, f2_s = f1[ins], f2[ins]
             if new_scale in self.proj:
-                with torch.autocast("cuda", self.amp_dtype):
+                with torch.autocast("cuda", dtype = self.amp_dtype):
                     f1_s, f2_s = self.proj[new_scale](f1_s), self.proj[new_scale](f2_s)
 
             if ins in coarse_scales:
