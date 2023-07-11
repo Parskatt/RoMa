@@ -10,4 +10,4 @@ matplotlib
 h5py
 wandb
 timm
-xformers # Optional, used for memefficient attention
+#xformers # Optional, used for memefficient attention

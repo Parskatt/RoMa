@@ -12,8 +12,6 @@ def local_correlation(
     r = local_radius
     K = (2*r+1)**2
     B, c, h, w = feature0.size()
-    feature0 = feature0.half()
-    feature1 = feature1.half()
     corr = torch.empty((B,K,h,w), device = feature0.device, dtype=feature0.dtype)
     if flow is None:
         # If flow is None, assume feature0 and feature1 are aligned
@@ -37,7 +35,7 @@ def local_correlation(
         ].expand(1, 2*r+1, 2*r+1, 2).reshape(1, (2*r+1)**2, 2)
     for _ in range(B):
         with torch.no_grad():
-            local_window_coords = (coords[_,:,:,None]+local_window[:,None,None]).reshape(1,h,w*(2*r+1)**2,2).half()
+            local_window_coords = (coords[_,:,:,None]+local_window[:,None,None]).reshape(1,h,w*(2*r+1)**2,2)
             window_feature = F.grid_sample(
                 feature1[_:_+1], local_window_coords, padding_mode=padding_mode, align_corners=False, mode = sample_mode, #
             )
