@@ -47,7 +47,7 @@ python experiments/roma_outdoor.py --only_test --benchmark mega-1500
 ```
 ## License
 All our code except DINOv2 is MIT license.
-DINOv2 has a non-commercial license [DINOv2](https://github.com/facebookresearch/dinov2/blob/main/LICENSE).
+DINOv2 has an Apache 2 license [DINOv2](https://github.com/facebookresearch/dinov2/blob/main/LICENSE).
 
 ## Acknowledgement
 Our codebase builds on the code in [DKM](https://github.com/Parskatt/DKM).
