@@ -1,13 +1,29 @@
-# RoMa: Revisiting Robust Losses for Dense Feature Matching
-### [Project Page (TODO)](https://parskatt.github.io/RoMa) | [Paper](https://arxiv.org/abs/2305.15404)
+# 
+<p align="center">
+  <h1 align="center"> <ins>RoMa</ins> 🏛️:<br> Robust Dense Feature Matching</h1>
+  <p align="center">
+    <a href="https://scholar.google.com/citations?user=Ul-vMR0AAAAJ">Johan Edstedt</a>
+    ·
+    <a href="https://scholar.google.com/citations?user=HS2WuHkAAAAJ">Qiyu Sun</a>
+    ·
+    <a href="https://scholar.google.com/citations?user=FUE3Wd0AAAAJ">Georg Bökman</a>
+    ·
+    <a href="https://scholar.google.com/citations?user=6WRQpCQAAAAJ">Mårten Wadenbäck</a>
+    ·
+    <a href="https://scholar.google.com/citations?user=lkWfR08AAAAJ">Michael Felsberg</a>
+  </p>
+  <h2 align="center"><p>
+    <a href="https://arxiv.org/abs/2308.08479" align="center">Paper</a> | 
+    <a href="https://parskatt.github.io/RoMa" align="center">Project Page (TODO)</a>
+  </p></h2>
+  <div align="center"></div>
+</p>
 <br/>
-
-> RoMa: Revisiting Robust Lossses for Dense Feature Matching  
-> [Johan Edstedt](https://scholar.google.com/citations?user=Ul-vMR0AAAAJ), [Qiyu Sun](https://scholar.google.com/citations?user=HS2WuHkAAAAJ), [Georg Bökman](https://scholar.google.com/citations?user=FUE3Wd0AAAAJ), [Mårten Wadenbäck](https://scholar.google.com/citations?user=6WRQpCQAAAAJ), [Michael Felsberg](https://scholar.google.com/citations?&user=lkWfR08AAAAJ)  
-> Arxiv 2023
-
-
-The codebase is in the [roma folder](roma).
+<p align="center">
+    <img src="https://github.com/Parskatt/RoMa/assets/22053118/15d8fea7-aa6d-479f-8a93-350d950d006b" alt="example" width=80%>
+    <br>
+    <em>RoMa is the robust dense feature matcher capable of estimating pixel-dense warps and reliable certainties for almost any image pair.</em>
+</p>
 
 ## Setup/Install
 In your python environment (tested on Linux python 3.10), run:
