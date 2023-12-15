@@ -6,7 +6,6 @@
 > [Johan Edstedt](https://scholar.google.com/citations?user=Ul-vMR0AAAAJ), [Qiyu Sun](https://scholar.google.com/citations?user=HS2WuHkAAAAJ), [Georg Bökman](https://scholar.google.com/citations?user=FUE3Wd0AAAAJ), [Mårten Wadenbäck](https://scholar.google.com/citations?user=6WRQpCQAAAAJ), [Michael Felsberg](https://scholar.google.com/citations?&user=lkWfR08AAAAJ)  
 > Arxiv 2023
 
-**NOTE!!! Very early code, there might be bugs**
 
 The codebase is in the [roma folder](roma).
 
@@ -32,6 +31,9 @@ F, mask = cv2.findFundamentalMat(
     kptsA.cpu().numpy(), kptsB.cpu().numpy(), ransacReprojThreshold=0.2, method=cv2.USAC_MAGSAC, confidence=0.999999, maxIters=10000
 )
 ```
+
+**New**: You can also match arbitrary keypoints with RoMa. A demo for this will be added soon.
+
 ## Reproducing Results
 The experiments in the paper are provided in the [experiments folder](experiments).
 
@@ -56,7 +58,7 @@ Our codebase builds on the code in [DKM](https://github.com/Parskatt/DKM).
 If you find our models useful, please consider citing our paper!
 ```
 @article{edstedt2023roma,
-title={{RoMa}: Revisiting Robust Lossses for Dense Feature Matching},
+title={{RoMa: Robust Dense Feature Matching}},
 author={Edstedt, Johan and Sun, Qiyu and Bökman, Georg and Wadenbäck, Mårten and Felsberg, Michael},
 journal={arXiv preprint arXiv:2305.15404},
 year={2023}
