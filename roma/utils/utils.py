@@ -520,6 +520,8 @@ def flow_to_pixel_coords(flow, h1, w1):
     )
     return flow
 
+to_pixel_coords = flow_to_pixel_coords # just an alias
+
 def flow_to_normalized_coords(flow, h1, w1):
     flow = (
         torch.stack(
@@ -532,6 +534,7 @@ def flow_to_normalized_coords(flow, h1, w1):
     )
     return flow
 
+to_normalized_coords = flow_to_normalized_coords # just an alias
 
 def warp_to_pixel_coords(warp, h1, w1, h2, w2):
     warp1 = warp[..., :2]
