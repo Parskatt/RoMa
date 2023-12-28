@@ -14,7 +14,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--im_A_path", default="assets/toronto_A.jpg", type=str)
     parser.add_argument("--im_B_path", default="assets/toronto_B.jpg", type=str)
-    parser.add_argument("--save_path", default="demo/roma_warp_toronto.jpg", type=str)
+    parser.add_argument("--save_path", default="demo/gif/roma_warp_toronto", type=str)
 
     args, _ = parser.parse_known_args()
     im1_path = args.im_A_path
@@ -23,6 +23,7 @@ if __name__ == "__main__":
 
     # Create model
     roma_model = roma_outdoor(device=device, coarse_res=560, upsample_res=(864, 1152))
+    roma_model.symmetric = False
 
     H, W = roma_model.get_output_resolution()
 
@@ -35,13 +36,11 @@ if __name__ == "__main__":
     x1 = (torch.tensor(np.array(im1)) / 255).to(device).permute(2, 0, 1)
     x2 = (torch.tensor(np.array(im2)) / 255).to(device).permute(2, 0, 1)
 
-    im2_transfer_rgb = F.grid_sample(
-    x2[None], warp[:,:W, 2:][None], mode="bilinear", align_corners=False
-    )[0]
-    im1_transfer_rgb = F.grid_sample(
-    x1[None], warp[:, W:, :2][None], mode="bilinear", align_corners=False
-    )[0]
-    warp_im = torch.cat((im2_transfer_rgb,im1_transfer_rgb),dim=2)
-    white_im = torch.ones((H,2*W),device=device)
-    vis_im = certainty * warp_im + (1 - certainty) * white_im
-    tensor_to_pil(vis_im, unnormalize=False).save(save_path)
+    coords_A, coords_B = warp[...,:2], warp[...,2:]
+    for i, x in enumerate(np.linspace(0,2*np.pi,200)):
+        t = (1 + np.cos(x))/2
+        interp_warp = (1-t)*coords_A + t*coords_B
+        im2_transfer_rgb = F.grid_sample(
+        x2[None], interp_warp[None], mode="bilinear", align_corners=False
+        )[0]
+        tensor_to_pil(im2_transfer_rgb, unnormalize=False).save(f"{save_path}_{i:03d}.jpg")
