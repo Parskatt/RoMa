@@ -14,7 +14,7 @@
   </p>
   <h2 align="center"><p>
     <a href="https://arxiv.org/abs/2305.15404" align="center">Paper</a> | 
-    <a href="https://parskatt.github.io/RoMa" align="center">Project Page (TODO)</a>
+    <a href="https://parskatt.github.io/RoMa" align="center">Project Page</a>
   </p></h2>
   <div align="center"></div>
 </p>
