@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="RoMa: Robust Dense Feature Matching">
+  <meta name="keywords" content="feature matching, dense matching, two-view geometry">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RoMa: Robust Dense Feature Matching</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="static/favicon/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="static/favicon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="static/favicon/favicon-16x16.png">
+  <link rel="manifest" href="static/favicon/site.webmanifest">
+  <script>
+    window.dataLayer = window.dataLayer || [];
+
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+
+    gtag('js', new Date());
+
+    gtag('config', 'G-PYVRSFMDRL');
+  </script>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
+        rel="stylesheet">
+
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="./static/js/index.js"></script>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+
+
+<section class="hero">
+  <div class="hero-body">
+    <div class="container">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">RoMa: Robust Dense Feature Matching</h1>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              <a href="https://scholar.google.com/citations?user=Ul-vMR0AAAAJ">Johan Edstedt<sup>1</sup></a>,</span>
+            </span>
+            <span class="author-block">
+              <a href="https://scholar.google.com/citations?user=HS2WuHkAAAAJ">Qiyu Sun<sup>2</sup></a>,</span>
+            </span>
+            <span class="author-block">
+              <a href="https://scholar.google.com/citations?user=FUE3Wd0AAAAJ">Georg Bökman<sup>3</sup></a>,</span>
+            </span>
+            <span class="author-block">
+              <a href="https://scholar.google.com/citations?user=6WRQpCQAAAAJ">Mårten Wadenbäck<sup>1</sup></a>,
+            </span>
+            <span class="author-block">
+              <a href="https://scholar.google.com/citations?&user=lkWfR08AAAAJ">Michael Felsberg<sup>1</sup></a>
+            </span>            
+             <br>
+          </div>
+
+          <div class="is-size-5 publication-authors">
+            <span class="author-block"><sup>1</sup>Linköping University &nbsp;&nbsp;</span>
+            <span class="author-block"><sup>2</sup>East China University of Science and Technology &nbsp;&nbsp;</span>
+            <span class="author-block"><sup>3</sup>Chalmers University of Technology &nbsp;&nbsp;</span>
+
+          </div>
+
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <!-- PDF Link. -->
+  <!--             <span class="link-block">
+                <a href="static/paper.pdf"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fas fa-file-pdf"></i>
+                  </span>
+                  <span>Paper</span>
+                </a>
+              </span> -->
+              <span class="link-block">
+                <a href="https://arxiv.org/abs/2305.15404"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="ai ai-arxiv"></i>
+                  </span>
+                  <span>Paper</span>
+                </a>
+              </span>
+              <!-- supp PDF Link. -->
+<!--               <span class="link-block">
+                <a href="static/supp.pdf"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fas fa-file-pdf"></i>
+                  </span>
+                  <span>Supp</span>
+                </a>
+              </span> -->
+              <!-- Video Link. 
+              <span class="link-block">
+                <a href="https://www.youtube.com/watch?v=MrKrnHhk8IA"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-youtube"></i>
+                  </span>
+                  <span>Video</span>
+                </a>
+              </span> 
+              -->
+              <!-- Code Link. -->
+              <span class="link-block">
+                <a href="https://github.com/Parskatt/RoMa"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-github"></i>
+                  </span>
+                  <span>Code</span>
+                  </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+    
+
+
+<section class="hero is-light is-small">
+  <div class="hero-body">
+    <div class="container">
+      <div id="results-carousel" class="carousel results-carousel">
+        <div class="item item-toronto">
+          <video poster="" id="toronto" autoplay controls muted loop height="100%">
+            <source src="static\videos\toronto.mp4"
+                    type="video/mp4">
+          </video>   
+        </div>
+        <div class="item item-alupka">
+          <video poster="" id="alupka" autoplay controls muted loop height="100%">
+            <source src="static/videos/alupka.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+        <div class="item item-sacre_coeur">
+          <video poster="" id="sacre_coeur" autoplay controls muted loop height="100%">
+            <source src="static/videos/sacre_coeur.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+        <div class="item item-norrk">
+          <video poster="" id="norrk" autoplay controls muted loop height="100%">
+            <source src="static/videos/norrk.mp4"
+                    type="video/mp4">
+          </video>
+        </div>
+                         
+      </div>
+    </div>
+  </div>
+   	<div align="center">
+		Visualization of RoMa estimated warps between large-baseline image pairs. 
+    <br>
+    The animation is done by by parameterizing \(W(t) = (1-t) x^{\mathcal{A}} + t \hat{x}^{\mathcal{B}}\) .
+  </div>
+</section>
+
+
+
+<section class="section">
+  <div class="container">
+
+    <!-- Abstract. -->
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-two-thirds">
+        <h2 class="title is-2">Summary</h2>
+        <div class="content has-text-justified", align="center">
+          <p>
+            We propose a significantly more robust dense feature matcher than previous approaches.
+
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!--/ Abstract. -->
+
+</div> 
+
+<section class="section">
+  <div class="container">
+
+    <!-- Abstract. -->
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-two-thirds">
+        <h2 class="title is-2">Method</h2>
+        <div class="content has-text-justified">
+          <img src="static/figures/method.jpg" style="width: 100%;height: 100%;border: none;"></img>
+          <p>
+            Our approach consists of four main contributions (see figure above):
+            <ol>
+              <li>We use a foundation model (DINOv2) instead of training from scratch, leading to more robust matches. </li>
+              <li>We use a specialized ConvNet for fine features.</li>
+              <li>We propose a Transformer match decoder that predicts anchor probabilities instead of coordinate regression.</li>
+              <li>We use better losses. </li>
+            </ol>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!--/ Abstract. -->
+
+</div> 
+
+
+<section class="section" id="BibTeX">
+  <div class="container content">
+    <h2 class="title">BibTeX</h2>
+    <pre><code>
+      @article{edstedt2023roma,
+        title={{RoMa: Robust Dense Feature Matching}},
+        author={Edstedt, Johan and Sun, Qiyu and Bökman, Georg and Wadenbäck, Mårten and Felsberg, Michael},
+        journal={arXiv preprint arXiv:2305.15404},
+        year={2023}
+        }
+    </code></pre>
+  </div>
+</section>
+    
+
+<footer class="footer">
+  <div align="center" class="container">
+    <div class="columns is-centered">
+        <div class="content">
+            Website template from <a href="https://github.com/nerfies/nerfies.github.io">here</a>.
+        </div>
+      </div>
+    </div>
+</footer>
+
+</body>
+</html>
