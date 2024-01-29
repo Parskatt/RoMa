@@ -6,8 +6,8 @@ from roma.models.encoders import *
 
 def roma_model(resolution, upsample_preds, device = None, weights=None, dinov2_weights=None, **kwargs):
     # roma weights and dinov2 weights are loaded seperately, as dinov2 weights are not parameters
-    torch.backends.cuda.matmul.allow_tf32 = True # allow tf32 on matmul
-    torch.backends.cudnn.allow_tf32 = True # allow tf32 on cudnn
+    #torch.backends.cuda.matmul.allow_tf32 = True # allow tf32 on matmul TODO: these probably ruin stuff, should be careful
+    #torch.backends.cudnn.allow_tf32 = True # allow tf32 on cudnn
     warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is deprecated')
     gp_dim = 512
     feat_dim = 512
