@@ -424,7 +424,7 @@ class RegressionMatcher(nn.Module):
         decoder,
         h=448,
         w=448,
-        sample_mode = "threshold",
+        sample_mode = "threshold_balanced",
         upsample_preds = False,
         symmetric = False,
         name = None,
