@@ -62,7 +62,7 @@ class MegaDepthPoseEstimationBenchmark:
                     w1, h1 = im_A.size
                     im_B = Image.open(im_B_path)
                     w2, h2 = im_B.size
-                    if False:
+                    if True: # Note: we keep this true as it was used in DKM/RoMa papers. There is very little difference compared to setting to False. 
                         scale1 = 1200 / max(w1, h1)
                         scale2 = 1200 / max(w2, h2)
                         w1, h1 = scale1 * w1, scale1 * h1
