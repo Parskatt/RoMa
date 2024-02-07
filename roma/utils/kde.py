@@ -8,7 +8,7 @@ def kde(x, std = 0.1):
     return density
 
 
-def approx_kde(x, std = 0.1, max_num_cmp = 30_000):
+def approx_kde(x, std = 0.1, max_num_cmp = 20_000):
     # use a gaussian kernel to estimate density
     if len(x.shape) > 2:
         raise ValueError(f"Needs shape N, D got shape {x.shape}")

@@ -13,7 +13,7 @@ import roma
 from roma.utils import get_tuple_transform_ops
 from roma.utils.local_correlation import local_correlation
 from roma.utils.utils import cls_to_flow_refine
-from roma.utils.kde import kde
+from roma.utils.kde import kde, approx_kde
 
 class ConvRefiner(nn.Module):
     def __init__(
@@ -483,7 +483,10 @@ class RegressionMatcher(nn.Module):
         good_matches, good_certainty = matches[good_samples], certainty[good_samples]
         if "balanced" not in self.sample_mode:
             return good_matches, good_certainty
-        density = kde(good_matches, std=0.1)
+        if "approx_kde" in self.sample_mode:
+            density = approx_kde(good_matches, std=0.1)
+        else:
+            density = kde(good_matches, std=0.1)
         p = 1 / (density+1)
         p[density < 10] = 1e-7 # Basically should have at least 10 perfect neighbours, or around 100 ok ones
         balanced_samples = torch.multinomial(p, 
