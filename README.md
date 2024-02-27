@@ -1,6 +1,6 @@
 # 
 <p align="center">
-  <h1 align="center"> <ins>RoMa</ins> 🏛️:<br> Robust Dense Feature Matching</h1>
+  <h1 align="center"> <ins>RoMa</ins> 🏛️:<br> Robust Dense Feature Matching <br> ⭐CVPR 2024⭐</h1>
   <p align="center">
     <a href="https://scholar.google.com/citations?user=Ul-vMR0AAAAJ">Johan Edstedt</a>
     ·
