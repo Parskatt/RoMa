@@ -49,6 +49,16 @@ F, mask = cv2.findFundamentalMat(
 ```
 
 **New**: You can also match arbitrary keypoints with RoMa. A demo for this will be added soon.
+## Settings
+
+### Resolution
+By default RoMa uses an initial resolution of (560,560) which is then upsampled to (864,864). 
+You can change this at construction (see roma_outdoor kwargs).
+You can also change this later, by changing the roma_model.w_resized, roma_model.h_resized, and roma_model.upsample_res.
+
+### Sampling
+roma_model.sample_thresh controls the thresholding used when sampling matches for estimation. In certain cases a lower or higher threshold may improve results.
+
 
 ## Reproducing Results
 The experiments in the paper are provided in the [experiments folder](experiments).
