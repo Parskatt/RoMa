@@ -577,7 +577,7 @@ class RegressionMatcher(nn.Module):
 
     def recrop(self, certainty, image_path):
         roi = self.get_roi(certainty, *Image.open(image_path).size)
-        return Image.open(image_path).crop(roi)
+        return Image.open(image_path).convert("RGB").crop(roi)
         
     @torch.inference_mode()
     def match(
@@ -591,7 +591,7 @@ class RegressionMatcher(nn.Module):
         if device is None:
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         if isinstance(im_A_path, (str, os.PathLike)):
-            im_A, im_B = Image.open(im_A_path), Image.open(im_B_path)
+            im_A, im_B = Image.open(im_A_path).convert("RGB"), Image.open(im_B_path).convert("RGB")
         else:
             # Assume its not a path
             im_A, im_B = im_A_path, im_B_path
@@ -650,7 +650,7 @@ class RegressionMatcher(nn.Module):
                     im_B = self.recrop(certainty[1,0], im_B_path)
                     #TODO: need to adjust corresps when doing this
                 else:
-                    im_A, im_B = Image.open(im_A_path), Image.open(im_B_path)
+                    im_A, im_B = Image.open(im_A_path).convert("RGB"), Image.open(im_B_path).convert("RGB")
                 im_A, im_B = test_transform((im_A, im_B))
                 im_A, im_B = im_A[None].to(device), im_B[None].to(device)
                 scale_factor = math.sqrt(self.upsample_res[0] * self.upsample_res[1] / (self.w_resized * self.h_resized))
@@ -713,7 +713,7 @@ class RegressionMatcher(nn.Module):
         W = W2//2 if symmetric else W2
         if im_A is None:
             from PIL import Image
-            im_A, im_B = Image.open(im_A_path), Image.open(im_B_path)
+            im_A, im_B = Image.open(im_A_path).convert("RGB"), Image.open(im_B_path).convert("RGB")
         im_A = im_A.resize((W,H))
         im_B = im_B.resize((W,H))
             
