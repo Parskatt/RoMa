@@ -83,10 +83,10 @@ Our codebase builds on the code in [DKM](https://github.com/Parskatt/DKM).
 ## BibTeX
 If you find our models useful, please consider citing our paper!
 ```
-@article{edstedt2023roma,
+@article{edstedt2024roma,
 title={{RoMa: Robust Dense Feature Matching}},
 author={Edstedt, Johan and Sun, Qiyu and Bökman, Georg and Wadenbäck, Mårten and Felsberg, Michael},
-journal={arXiv preprint arXiv:2305.15404},
-year={2023}
+journal={IEEE Conference on Computer Vision and Pattern Recognition},
+year={2024}
 }
 ```
