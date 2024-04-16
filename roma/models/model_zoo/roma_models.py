@@ -1,10 +1,11 @@
 import warnings
 import torch.nn as nn
+import torch
 from roma.models.matcher import *
 from roma.models.transformer import Block, TransformerDecoder, MemEffAttention
 from roma.models.encoders import *
 
-def roma_model(resolution, upsample_preds, device = None, weights=None, dinov2_weights=None, **kwargs):
+def roma_model(resolution, upsample_preds, device = None, weights=None, dinov2_weights=None, amp_dtype: torch.dtype=torch.float16, **kwargs):
     # roma weights and dinov2 weights are loaded seperately, as dinov2 weights are not parameters
     #torch.backends.cuda.matmul.allow_tf32 = True # allow tf32 on matmul TODO: these probably ruin stuff, should be careful
     #torch.backends.cudnn.allow_tf32 = True # allow tf32 on cudnn
@@ -146,7 +147,8 @@ def roma_model(resolution, upsample_preds, device = None, weights=None, dinov2_w
             amp = True),
         amp = True,
         use_vgg = True,
-        dinov2_weights = dinov2_weights
+        dinov2_weights = dinov2_weights,
+        amp_dtype=amp_dtype,
     )
     h,w = resolution
     symmetric = True
