@@ -57,8 +57,8 @@ class MegadepthDenseBenchmark:
             )
             for idx, data in tqdm.tqdm(enumerate(dataloader), disable = roma.RANK > 0):
                 im_A, im_B, depth1, depth2, T_1to2, K1, K2 = (
-                    data["im_A"],
-                    data["im_B"],
+                    data["im_A"].cuda(),
+                    data["im_B"].cuda(),
                     data["im_A_depth"].cuda(),
                     data["im_B_depth"].cuda(),
                     data["T_1to2"].cuda(),

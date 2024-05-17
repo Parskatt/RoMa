@@ -108,7 +108,7 @@ class RobustLosses(nn.Module):
             scale_corresps = corresps[scale]
             scale_certainty, flow_pre_delta, delta_cls, offset_scale, scale_gm_cls, scale_gm_certainty, flow, scale_gm_flow = (
                 scale_corresps["certainty"],
-                scale_corresps["flow_pre_delta"],
+                scale_corresps.get("flow_pre_delta"),
                 scale_corresps.get("delta_cls"),
                 scale_corresps.get("offset_scale"),
                 scale_corresps.get("gm_cls"),
@@ -117,8 +117,12 @@ class RobustLosses(nn.Module):
                 scale_corresps.get("gm_flow"),
 
             )
-            flow_pre_delta = rearrange(flow_pre_delta, "b d h w -> b h w d")
-            b, h, w, d = flow_pre_delta.shape
+            if flow_pre_delta is not None:
+                flow_pre_delta = rearrange(flow_pre_delta, "b d h w -> b h w d")
+                b, h, w, d = flow_pre_delta.shape
+            else:
+                # _ = 1
+                b, _, h, w = scale_certainty.shape
             gt_warp, gt_prob = get_gt_warp(                
             batch["im_A_depth"],
             batch["im_B_depth"],
