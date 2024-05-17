@@ -86,7 +86,7 @@ class RobustLosses(nn.Module):
             wandb.log({"train_pck_05": pck_05}, step = roma.GLOBAL_STEP)
 
         ce_loss = F.binary_cross_entropy_with_logits(certainty[:, 0], prob)
-        a = self.alpha
+        a = self.alpha[scale] if isinstance(self.alpha, dict) else self.alpha
         cs = self.c * scale
         x = epe[prob > 0.99]
         reg_loss = cs**a * ((x/(cs))**2 + 1**2)**(a/2)
