@@ -6,7 +6,13 @@ from tqdm import tqdm
 import torch.nn.functional as F
 import roma
 import kornia.geometry.epipolar as kepi
-import pyposelib
+
+# wrap cause pyposelib is still in dev
+# will add in deps later
+try:
+    import pyposelib
+except:
+    pass
 
 class Mega1500PoseLibBenchmark:
     def __init__(self, data_root="data/megadepth", scene_names = None, num_ransac_iter = 5) -> None:
