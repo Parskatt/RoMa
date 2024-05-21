@@ -6,6 +6,7 @@ import torch
 from argparse import ArgumentParser
 from pathlib import Path
 import math
+import numpy as np
 
 from torch import nn
 from torch.utils.data import ConcatDataset
@@ -13,8 +14,11 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 import json
 import wandb
+from PIL import Image
+from torchvision.transforms import ToTensor
 
 from roma.benchmarks import MegadepthDenseBenchmark
+from roma.benchmarks import Mega1500PoseLibBenchmark
 from roma.datasets.megadepth import MegadepthBuilder
 from roma.losses.robust_loss import RobustLosses
 from roma.benchmarks import MegaDepthPoseEstimationBenchmark, MegadepthDenseBenchmark, HpatchesHomogBenchmark
@@ -22,6 +26,13 @@ from roma.train.train import train_k_steps
 from roma.checkpointing import CheckPoint
 
 resolutions = {"low":(448, 448), "medium":(14*8*5, 14*8*5), "high":(14*8*6, 14*8*6)}
+
+def kde(x, std = 0.1):
+    # use a gaussian kernel to estimate density
+    x = x.half() # Do it in half precision TODO: remove hardcoding
+    scores = (-torch.cdist(x,x)**2/(2*std**2)).exp()
+    density = scores.sum(dim=-1)
+    return density
 
 class BasicLayer(nn.Module):
     """
@@ -38,13 +49,30 @@ class BasicLayer(nn.Module):
     def forward(self, x):
         return self.layer(x)
 
+class SeperableLayer(nn.Module):
+    """
+        Basic Convolutional Layer: Conv2d -> BatchNorm -> ReLU
+    """
+    def __init__(self, in_channels, out_channels, kernel_size=5, stride=1, padding=2, dilation=1, bias=False, relu = True):
+        super().__init__()
+        assert in_channels == out_channels
+        self.layer = nn.Sequential(
+            nn.Conv2d( in_channels, out_channels, kernel_size, padding = padding, stride=stride, dilation=dilation, bias = bias, groups = in_channels),
+            nn.BatchNorm2d(out_channels, affine=False),
+            nn.ReLU(inplace = True) if relu else nn.Identity(),
+            nn.Conv2d(out_channels, out_channels, kernel_size=1, padding = 0, stride=1, dilation=1, bias = bias),
+        )
+
+    def forward(self, x):
+        return self.layer(x)
+
 class XFeatModel(nn.Module):
     """
         Implementation of architecture described in 
         "XFeat: Accelerated Features for Lightweight Image Matching, CVPR 2024."
     """
 
-    def __init__(self, xfeat = None, freeze_xfeat = True):
+    def __init__(self, xfeat = None, freeze_xfeat = True, sample_mode = "threshold_balanced", symmetric = True):
         super().__init__()
         if xfeat is None:
             xfeat = torch.hub.load('verlab/accelerated_features', 'XFeat', pretrained = True, top_k = 4096).net
@@ -56,27 +84,23 @@ class XFeatModel(nn.Module):
             self.xfeat = nn.ModuleList([xfeat])
         self.freeze_xfeat = freeze_xfeat
         match_dim = 256
-        self.coarse_matcher1 = nn.Sequential(
+        self.coarse_matcher = nn.Sequential(
             BasicLayer(64+64+2, match_dim,),
-            BasicLayer(match_dim, match_dim,), 
-            BasicLayer(match_dim, match_dim,), 
-            BasicLayer(match_dim, match_dim,), 
+            SeperableLayer(match_dim, match_dim,), 
+            SeperableLayer(match_dim, match_dim,), 
+            SeperableLayer(match_dim, match_dim,), 
             nn.Conv2d(match_dim, 3, kernel_size=1, bias=True, padding=0))
-        self.coarse_matcher2 = nn.Sequential(
-            BasicLayer(64+64+2, match_dim,),
-            BasicLayer(match_dim, match_dim,), 
-            BasicLayer(match_dim, match_dim,), 
-            BasicLayer(match_dim, match_dim,), 
-            nn.Conv2d(match_dim, 3, kernel_size=1, bias=True, padding=0))
-
         fine_match_dim = 64
         self.fine_matcher = nn.Sequential(
             BasicLayer(24+24+2, fine_match_dim,),
-            BasicLayer(fine_match_dim, fine_match_dim,), 
-            BasicLayer(fine_match_dim, fine_match_dim,), 
-            BasicLayer(fine_match_dim, fine_match_dim,), 
+            SeperableLayer(fine_match_dim, fine_match_dim,), 
+            SeperableLayer(fine_match_dim, fine_match_dim,), 
+            SeperableLayer(fine_match_dim, fine_match_dim,), 
             nn.Conv2d(fine_match_dim, 3, kernel_size=1, bias=True, padding=0),)
-         
+        self.sample_mode = sample_mode
+        self.sample_thresh = 0.05
+        self.symmetric = symmetric
+        
     def forward_single(self, x):
         with torch.inference_mode(self.freeze_xfeat):
             xfeat = self.xfeat[0]
@@ -96,6 +120,20 @@ class XFeatModel(nn.Module):
         if self.freeze_xfeat:
             return x2.clone(), feats.clone()
         return x2, feats
+
+    def to_pixel_coordinates(self, coords, H_A, W_A, H_B = None, W_B = None):
+        if coords.shape[-1] == 2:
+            return self._to_pixel_coordinates(coords, H_A, W_A) 
+        
+        if isinstance(coords, (list, tuple)):
+            kpts_A, kpts_B = coords[0], coords[1]
+        else:
+            kpts_A, kpts_B = coords[...,:2], coords[...,2:]
+        return self._to_pixel_coordinates(kpts_A, H_A, W_A), self._to_pixel_coordinates(kpts_B, H_B, W_B)
+
+    def _to_pixel_coordinates(self, coords, H, W):
+        kpts = torch.stack((W/2 * (coords[...,0]+1), H/2 * (coords[...,1]+1)),axis=-1)
+        return kpts
     
     def pos_embed(self, corr_volume):
         H,W = corr_volume.shape[-2:] 
@@ -108,6 +146,42 @@ class XFeatModel(nn.Module):
         corr_volume = corr_volume.softmax(dim=1) # B, HW, H, W
         pos_embeddings = torch.einsum('bchw,cd->bdhw', corr_volume, grid)
         return pos_embeddings
+    
+    def visualize_warp(self, warp, certainty, im_A = None, im_B = None, 
+                       im_A_path = None, im_B_path = None, device = "cuda", symmetric = True, save_path = None, unnormalize = False):
+        #assert symmetric == True, "Currently assuming bidirectional warp, might update this if someone complains ;)"
+        H,W2,_ = warp.shape
+        W = W2//2 if symmetric else W2
+        if im_A is None:
+            from PIL import Image
+            im_A, im_B = Image.open(im_A_path).convert("RGB"), Image.open(im_B_path).convert("RGB")
+        if not isinstance(im_A, torch.Tensor):
+            im_A = im_A.resize((W,H))
+            im_B = im_B.resize((W,H))    
+            x_B = (torch.tensor(np.array(im_B)) / 255).to(device).permute(2, 0, 1)
+            if symmetric:
+                x_A = (torch.tensor(np.array(im_A)) / 255).to(device).permute(2, 0, 1)
+        else:
+            if symmetric:
+                x_A = im_A
+            x_B = im_B
+        im_A_transfer_rgb = F.grid_sample(
+        x_B[None], warp[:,:W, 2:][None], mode="bilinear", align_corners=False
+        )[0]
+        if symmetric:
+            im_B_transfer_rgb = F.grid_sample(
+            x_A[None], warp[:, W:, :2][None], mode="bilinear", align_corners=False
+            )[0]
+            warp_im = torch.cat((im_A_transfer_rgb,im_B_transfer_rgb),dim=2)
+            white_im = torch.ones((H,2*W),device=device)
+        else:
+            warp_im = im_A_transfer_rgb
+            white_im = torch.ones((H, W), device = device)
+        vis_im = certainty * warp_im + (1 - certainty) * white_im
+        if save_path is not None:
+            from roma.utils import tensor_to_pil
+            tensor_to_pil(vis_im, unnormalize=unnormalize).save(save_path)
+        return vis_im
      
     def corr_volume(self, feat0, feat1):
         """
@@ -125,7 +199,18 @@ class XFeatModel(nn.Module):
         return corr_volume
     
     @torch.inference_mode()
-    def match(self, im0: torch.Tensor, im1: torch.Tensor, batched = True):
+    def match_from_path(self, im0_path, im1_path):
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        H,W = 1024, 1024
+        im0 = ToTensor()(Image.open(im0_path).resize((W,H)))[None].to(device)
+        im1 = ToTensor()(Image.open(im1_path).resize((W,H)))[None].to(device)
+        return self.match(im0, im1, batched = False)
+    
+    @torch.inference_mode()
+    def match(self, im0, im1, *args, batched = True):
+        # stupid
+        if isinstance(im0, (str, Path)):
+            return self.match_from_path(im0, im1)
         B,C,H,W = im0.shape
         self.train(False)
         corresps = self.forward({"im_A":im0, "im_B":im1})
@@ -141,8 +226,41 @@ class XFeatModel(nn.Module):
             dim = -1).float().to(flow.device).expand(B, H, W, 2)
         
         certainty = F.interpolate(corresps[4]["certainty"], size = (H,W), mode = "bilinear", align_corners = False)
-        return torch.cat((grid, flow), dim = -1), certainty[:,0]
-        
+        warp, cert = torch.cat((grid, flow), dim = -1), certainty[:,0].sigmoid()
+        if batched:
+            return warp, cert
+        else:
+            return warp[0], cert[0]
+
+    def sample(
+        self,
+        matches,
+        certainty,
+        num=10000,
+    ):
+        if "threshold" in self.sample_mode:
+            upper_thresh = self.sample_thresh
+            certainty = certainty.clone()
+            certainty[certainty > upper_thresh] = 1
+        matches, certainty = (
+            matches.reshape(-1, 4),
+            certainty.reshape(-1),
+        )
+        expansion_factor = 4 if "balanced" in self.sample_mode else 1
+        good_samples = torch.multinomial(certainty, 
+                          num_samples = min(expansion_factor*num, len(certainty)), 
+                          replacement=False)
+        good_matches, good_certainty = matches[good_samples], certainty[good_samples]
+        if "balanced" not in self.sample_mode:
+            return good_matches, good_certainty
+        density = kde(good_matches, std=0.1)
+        p = 1 / (density+1)
+        p[density < 10] = 1e-7 # Basically should have at least 10 perfect neighbours, or around 100 ok ones
+        balanced_samples = torch.multinomial(p, 
+                          num_samples = min(num,len(good_certainty)), 
+                          replacement=False)
+        return good_matches[balanced_samples], good_certainty[balanced_samples]
+            
     def forward(self, batch):
         """
             input:
@@ -154,28 +272,24 @@ class XFeatModel(nn.Module):
         im1 = batch["im_B"]
         B, C, H, W = im0.shape
         corresps = {}
-        x = torch.cat([im0, im1], dim=0)
-        x: tuple[torch.Tensor, torch.Tensor] = self.forward_single(x)
-        feats_x0_c, feats_x1_c = x[1].chunk(2)
-        
+        if im0.shape[-2:] == im1.shape[-2:]:
+            x = torch.cat([im0, im1], dim=0)
+            x = self.forward_single(x)
+            feats_x0_c, feats_x1_c = x[1].chunk(2)
+            feats_x0_f, feats_x1_f = x[0].chunk(2)
+        else:
+            feats_x0_f, feats_x0_c = self.forward_single(im0)
+            feats_x1_f, feats_x1_c = self.forward_single(im1)
         corr_volume = self.corr_volume(feats_x0_c, feats_x1_c)
         coarse_warp = self.pos_embed(corr_volume)
         coarse_matches = torch.cat((coarse_warp, torch.zeros_like(coarse_warp[:,-1:])), dim=1)
         feats_x1_c_warped = F.grid_sample(feats_x1_c, coarse_matches.permute(0, 2, 3, 1)[...,:2], mode = 'bilinear', align_corners = False)
+        coarse_matches_delta = self.coarse_matcher(torch.cat((feats_x0_c, feats_x1_c_warped, coarse_warp), dim=1))
         #print(f"{coarse_matches_delta=}")
         corresps[8] = {"gm_flow": coarse_matches[:,:2], "gm_certainty": coarse_matches[:,2:]}
-        coarse_matches = coarse_matches.detach()
-        coarse_matches_delta: torch.Tensor = self.coarse_matcher1(torch.cat((feats_x0_c, feats_x1_c_warped, coarse_warp), dim=1))
         coarse_matches = coarse_matches + coarse_matches_delta
-        corresps[8] = {"flow": [coarse_matches[:,:2]], "certainty": [coarse_matches[:,2:]]}
-        coarse_matches = coarse_matches.detach()
-        feats_x1_c_warped = F.grid_sample(feats_x1_c, coarse_matches.permute(0, 2, 3, 1)[...,:2], mode = 'bilinear', align_corners = False)
-        coarse_matches_delta: torch.Tensor = self.coarse_matcher2(torch.cat((feats_x0_c, feats_x1_c_warped, coarse_warp), dim=1))
-        coarse_matches = coarse_matches + coarse_matches_delta
-        corresps[8]["flow"].append(coarse_matches[:,:2])
-        corresps[8]["certainty"].append(coarse_matches[:,2:])
+        corresps[8] = {"flow": coarse_matches[:,:2], "certainty": coarse_matches[:,2:]}
         coarse_matches_up = F.interpolate(coarse_matches, size = x[0].shape[-2:], mode = "bilinear", align_corners = False)        
-        feats_x0_f, feats_x1_f = x[0].chunk(2)
         coarse_matches_up_detach = coarse_matches_up.detach()#note the detach
         feats_x1_f_warped = F.grid_sample(feats_x1_f, coarse_matches_up_detach.permute(0, 2, 3, 1)[...,:2], mode = 'bilinear', align_corners = False)
         fine_matches_delta = self.fine_matcher(torch.cat((feats_x0_f, feats_x1_f_warped, coarse_matches_up_detach[:,:2]), dim=1))
@@ -310,6 +424,10 @@ def test_hpatches(model, name):
     hpatches_results = hpatches_benchmark.benchmark(model)
     json.dump(hpatches_results, open(f"results/hpatches_{name}.json", "w"))
 
+def test_mega1500_poselib(model, name):
+    mega1500_benchmark = Mega1500PoseLibBenchmark("data/megadepth")
+    mega1500_results = mega1500_benchmark.benchmark(model, model_name=name)
+    json.dump(mega1500_results, open(f"results/mega1500_{name}.json", "w"))
 
 if __name__ == "__main__":
     os.environ["TORCH_CUDNN_V8_API_ENABLED"] = "1" # For BF16 computations
@@ -328,3 +446,11 @@ if __name__ == "__main__":
     roma.DEBUG_MODE = args.debug_mode
     if not args.only_test:
         train(args)
+
+    experiment_name = "tiny_roma_v3"
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = XFeatModel(freeze_xfeat=False).to(device)
+    
+    model.load_state_dict(torch.load("tiny_roma_outdoor_v3_latest.pth")["model"])
+    #test_mega1500(model, experiment_name)
+    test_mega1500_poselib(model, experiment_name)
