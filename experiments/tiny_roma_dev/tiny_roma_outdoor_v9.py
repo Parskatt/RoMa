@@ -46,9 +46,10 @@ class XFeatModel(nn.Module):
 
     def __init__(self):
         super().__init__()
+        BasicLayer = BasicLayerXFeat
+        self.norm = nn.InstanceNorm2d(1)
         self.skip1 = nn.Sequential(	 nn.AvgPool2d(4, stride = 4),
                                         nn.Conv2d (1, 24, 1, stride = 1, padding=0) )
-        BasicLayer = BasicLayerXFeat
         self.block1 = nn.Sequential(
                                         BasicLayer( 1,  4, stride=1),
                                         BasicLayer( 4,  8, stride=2),
@@ -98,23 +99,19 @@ class XFeatModel(nn.Module):
             nn.Conv2d(fine_match_dim, 3, kernel_size=1, bias=True, padding=0),)
          
     def forward_single(self, x):
-        with torch.inference_mode(self.freeze_xfeat):
-            xfeat = self.xfeat[0]
-            with torch.no_grad():
-                x = x.mean(dim=1, keepdim = True)
-                x = xfeat.norm(x)
+        with torch.no_grad():
+            x = x.mean(dim=1, keepdim = True)
+            x = self.norm(x)
 
-            #main backbone
-            x1 = xfeat.block1(x)
-            x2 = xfeat.block2(x1 + xfeat.skip1(x))
-            x3 = xfeat.block3(x2)
-            x4 = xfeat.block4(x3)
-            x5 = xfeat.block5(x4)
-            x4 = F.interpolate(x4, (x3.shape[-2], x3.shape[-1]), mode='bilinear')
-            x5 = F.interpolate(x5, (x3.shape[-2], x3.shape[-1]), mode='bilinear')
-            feats = xfeat.block_fusion( x3 + x4 + x5 )
-        if self.freeze_xfeat:
-            return x2.clone(), feats.clone()
+        #main backbone
+        x1 = self.block1(x)
+        x2 = self.block2(x1 + self.skip1(x))
+        x3 = self.block3(x2)
+        x4 = self.block4(x3)
+        x5 = self.block5(x4)
+        x4 = F.interpolate(x4, (x3.shape[-2], x3.shape[-1]), mode='bilinear')
+        x5 = F.interpolate(x5, (x3.shape[-2], x3.shape[-1]), mode='bilinear')
+        feats = self.block_fusion( x3 + x4 + x5 )
         return x2, feats
     
     def pos_embed(self, corr_volume):
@@ -219,7 +216,7 @@ def train(args):
     wandb.init(project="roma", entity=args.wandb_entity, name=experiment_name, reinit=False, mode = wandb_mode)
     checkpoint_dir = "workspace/checkpoints/"
     h,w = resolutions[resolution]
-    model = XFeatModel(freeze_xfeat = False).to(device_id)
+    model = XFeatModel().to(device_id)
     # Num steps
     global_step = 0
     batch_size = args.gpu_batch_size

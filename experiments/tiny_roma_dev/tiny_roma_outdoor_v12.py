@@ -23,15 +23,14 @@ from roma.checkpointing import CheckPoint
 
 resolutions = {"low":(448, 448), "medium":(14*8*5, 14*8*5), "high":(14*8*6, 14*8*6)}
 
-class BasicLayerMaxPool(nn.Module):
+class BasicLayer(nn.Module):
     """
         Basic Convolutional Layer: Conv2d -> BatchNorm -> ReLU
     """
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1, dilation=1, bias=False, relu = True):
         super().__init__()
         self.layer = nn.Sequential(
-                                        nn.MaxPool2d(stride, stride) if stride > 1 else nn.Identity(),
-                                        nn.Conv2d( in_channels, out_channels, kernel_size, padding = padding, stride=1, dilation=dilation, bias = bias),
+                                        nn.Conv2d( in_channels, out_channels, kernel_size, padding = padding, stride=stride, dilation=dilation, bias = bias),
                                         nn.BatchNorm2d(out_channels, affine=False),
                                         nn.ReLU(inplace = True) if relu else nn.Identity()
                                     )
@@ -45,76 +44,67 @@ class XFeatModel(nn.Module):
         "XFeat: Accelerated Features for Lightweight Image Matching, CVPR 2024."
     """
 
-    def __init__(self):
+    def __init__(self, xfeat = None, freeze_xfeat = True):
         super().__init__()
-        BasicLayer = BasicLayerMaxPool
-        self.norm = nn.InstanceNorm2d(1)
-        self.skip1 = nn.Sequential(	 nn.AvgPool2d(4, stride = 4),
+        if xfeat is None:
+            xfeat = torch.hub.load('verlab/accelerated_features', 'XFeat', pretrained = True, top_k = 4096).net
+            del xfeat.heatmap_head, xfeat.keypoint_head, xfeat.fine_matcher
+        if freeze_xfeat:
+            xfeat.train(False)
+            self.xfeat = [xfeat]# hide params from ddp
+        else:
+            self.xfeat = nn.ModuleList([xfeat])
+        self.freeze_xfeat = freeze_xfeat
+        self.skip1_f = nn.Sequential(	 nn.AvgPool2d(4, stride = 4),
                                         nn.Conv2d (1, 24, 1, stride = 1, padding=0) )
-        self.block1 = nn.Sequential(
+        self.block1_f = nn.Sequential(
                                         BasicLayer( 1,  4, stride=1),
                                         BasicLayer( 4,  8, stride=2),
                                         BasicLayer( 8,  8, stride=1),
                                         BasicLayer( 8, 24, stride=2),
                                     )
 
-        self.block2 = nn.Sequential(
+        self.block2_f = nn.Sequential(
                                         BasicLayer(24, 24, stride=1),
                                         BasicLayer(24, 24, stride=1),
                                         )
-
-        self.block3 = nn.Sequential(
-                                        BasicLayer(24, 64, stride=2),
-                                        BasicLayer(64, 64, stride=1),
-                                        BasicLayer(64, 64, 1, padding=0),
-                                        )
-        self.block4 = nn.Sequential(
-                                        BasicLayer(64, 64, stride=2),
-                                        BasicLayer(64, 64, stride=1),
-                                        BasicLayer(64, 64, stride=1),
-                                        )
-
-        self.block5 = nn.Sequential(
-                                        BasicLayer( 64, 128, stride=2),
-                                        BasicLayer(128, 128, stride=1),
-                                        BasicLayer(128, 128, stride=1),
-                                        BasicLayer(128,  64, 1, padding=0),)
-
-        self.block_fusion =  nn.Sequential(
-                                        BasicLayer(64, 64, stride=1),
-                                        BasicLayer(64, 64, stride=1),
-                                        nn.Conv2d (64, 64, 1, padding=0))
         match_dim = 256
         self.coarse_matcher = nn.Sequential(
-            BasicLayer(64+64+2, match_dim,),
+            BasicLayer(64+5*64+2, match_dim,),
             BasicLayer(match_dim, match_dim,), 
             BasicLayer(match_dim, match_dim,), 
             BasicLayer(match_dim, match_dim,), 
             nn.Conv2d(match_dim, 3, kernel_size=1, bias=True, padding=0))
         fine_match_dim = 64
         self.fine_matcher = nn.Sequential(
-            BasicLayer(24+24+2, fine_match_dim,),
+            BasicLayer(24+1*24+2, fine_match_dim,),
             BasicLayer(fine_match_dim, fine_match_dim,), 
             BasicLayer(fine_match_dim, fine_match_dim,), 
             BasicLayer(fine_match_dim, fine_match_dim,), 
             nn.Conv2d(fine_match_dim, 3, kernel_size=1, bias=True, padding=0),)
          
     def forward_single(self, x):
-        with torch.no_grad():
-            x = x.mean(dim=1, keepdim = True)
-            x = self.norm(x)
+        with torch.inference_mode(self.freeze_xfeat):
+            xfeat = self.xfeat[0]
+            with torch.no_grad():
+                x = x.mean(dim=1, keepdim = True)
+                x = xfeat.norm(x)
 
-        #main backbone
-        x1 = self.block1(x)
-        x2 = self.block2(x1 + self.skip1(x))
-        x3 = self.block3(x2)
-        x4 = self.block4(x3)
-        x5 = self.block5(x4)
-        x4 = F.interpolate(x4, (x3.shape[-2], x3.shape[-1]), mode='bilinear')
-        x5 = F.interpolate(x5, (x3.shape[-2], x3.shape[-1]), mode='bilinear')
-        feats = self.block_fusion( x3 + x4 + x5 )
-        return x2, feats
-   
+            #main backbone
+            x1 = xfeat.block1(x)
+            x2 = xfeat.block2(x1 + xfeat.skip1(x))
+            x3 = xfeat.block3(x2)
+            x4 = xfeat.block4(x3)
+            x5 = xfeat.block5(x4)
+            x4 = F.interpolate(x4, (x3.shape[-2], x3.shape[-1]), mode='bilinear')
+            x5 = F.interpolate(x5, (x3.shape[-2], x3.shape[-1]), mode='bilinear')
+            feats = xfeat.block_fusion( x3 + x4 + x5 )
+        
+        fine_feats = self.block2_f(self.block1_f(x)+self.skip1_f(x))
+        if self.freeze_xfeat:
+            return fine_feats, feats.clone()
+        return fine_feats, feats
+    
     def pos_embed(self, corr_volume):
         H,W = corr_volume.shape[-2:] 
         grid = torch.stack(
@@ -179,8 +169,22 @@ class XFeatModel(nn.Module):
         corr_volume = self.corr_volume(feats_x0_c, feats_x1_c)
         coarse_warp = self.pos_embed(corr_volume)
         coarse_matches = torch.cat((coarse_warp, torch.zeros_like(coarse_warp[:,-1:])), dim=1)
-        feats_x1_c_warped = F.grid_sample(feats_x1_c, coarse_matches.permute(0, 2, 3, 1)[...,:2], mode = 'bilinear', align_corners = False)
-        coarse_matches_delta = self.coarse_matcher(torch.cat((feats_x0_c, feats_x1_c_warped, coarse_warp), dim=1))
+        radius = 0.1
+        left, right, up, down = torch.tensor([-1,0]).to(feats_x1_c), torch.tensor([1,0]).to(feats_x1_c), torch.tensor([0,-1]).to(feats_x1_c), torch.tensor([0,1]).to(feats_x1_c)
+        
+        feats_x1_c_warped_mid = F.grid_sample(feats_x1_c, coarse_matches.permute(0, 2, 3, 1)[...,:2], mode = 'bilinear', align_corners = False)
+        feats_x1_c_warped_left = F.grid_sample(feats_x1_c, coarse_matches.permute(0, 2, 3, 1)[...,:2]+radius*left, mode = 'bilinear', align_corners = False)
+        feats_x1_c_warped_right = F.grid_sample(feats_x1_c, coarse_matches.permute(0, 2, 3, 1)[...,:2]+radius*right, mode = 'bilinear', align_corners = False)
+        feats_x1_c_warped_up = F.grid_sample(feats_x1_c, coarse_matches.permute(0, 2, 3, 1)[...,:2]+radius*up, mode = 'bilinear', align_corners = False)
+        feats_x1_c_warped_down = F.grid_sample(feats_x1_c, coarse_matches.permute(0, 2, 3, 1)[...,:2]+radius*down, mode = 'bilinear', align_corners = False)
+        coarse_matches_delta = self.coarse_matcher(torch.cat((
+            feats_x0_c, 
+            feats_x1_c_warped_mid,
+            feats_x1_c_warped_left,
+            feats_x1_c_warped_right,
+            feats_x1_c_warped_up,
+            feats_x1_c_warped_down, 
+            coarse_warp), dim=1))
         #print(f"{coarse_matches_delta=}")
         corresps[8] = {"gm_flow": coarse_matches[:,:2], "gm_certainty": coarse_matches[:,2:]}
         coarse_matches = coarse_matches + coarse_matches_delta
@@ -217,7 +221,7 @@ def train(args):
     wandb.init(project="roma", entity=args.wandb_entity, name=experiment_name, reinit=False, mode = wandb_mode)
     checkpoint_dir = "workspace/checkpoints/"
     h,w = resolutions[resolution]
-    model = XFeatModel().to(device_id)
+    model = XFeatModel(freeze_xfeat = False).to(device_id)
     # Num steps
     global_step = 0
     batch_size = args.gpu_batch_size
