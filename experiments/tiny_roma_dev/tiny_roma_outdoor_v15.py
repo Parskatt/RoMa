@@ -20,7 +20,7 @@ from torchvision.transforms import ToTensor
 from roma.benchmarks import MegadepthDenseBenchmark
 from roma.benchmarks import Mega1500PoseLibBenchmark
 from roma.datasets.megadepth import MegadepthBuilder
-from roma.losses.robust_loss import RobustLosses
+from roma.losses.robust_loss_tiny_roma import RobustLosses
 from roma.benchmarks import MegaDepthPoseEstimationBenchmark, MegadepthDenseBenchmark, HpatchesHomogBenchmark
 from roma.train.train import train_k_steps
 from roma.checkpointing import CheckPoint
@@ -337,7 +337,9 @@ def train(args):
         local_largest_scale=4,
         depth_interpolation_mode=depth_interpolation_mode,
         alpha = 0.5,
-        c = 1e-4,)
+        c = 1e-4,
+        epe_mask_prob_th = 0.01,
+        )
     parameters = [
         {"params": model.parameters(), "lr": roma.STEP_SIZE * 1e-4 / 8},
     ]
