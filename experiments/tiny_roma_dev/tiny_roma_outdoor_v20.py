@@ -100,7 +100,6 @@ class XFeatModel(nn.Module):
             x4 = F.interpolate(x4, (x3.shape[-2], x3.shape[-1]), mode='bilinear')
             x5 = F.interpolate(x5, (x3.shape[-2], x3.shape[-1]), mode='bilinear')
             feats = xfeat.block_fusion( x3 + x4 + x5 )
-            feats = F.normalize(feats, p=2, dim=1)
         if self.freeze_xfeat:
             return x2.clone(), feats.clone()
         return x2, feats
@@ -129,7 +128,7 @@ class XFeatModel(nn.Module):
             dim = -1).float().cuda().reshape(H*W, 2)
         corrs, inds = corr_volume.max(dim=1) # B, HW, H, W
         #TODO: xfeat uses 0.82 as threshold, we could use some threshold for when to sample
-        pos_embeddings = grid[inds.view(-1)].reshape(*corrs.shape, 2)
+        pos_embeddings = grid[inds.view(-1)].reshape(*corrs.shape, 2).permute(0,3,1,2)
         return pos_embeddings
     
     def visualize_warp(self, warp, certainty, im_A = None, im_B = None, 
@@ -179,6 +178,8 @@ class XFeatModel(nn.Module):
         B, C, H, W = feat0.shape
         feat0 = feat0.view(B, C, H*W)
         feat1 = feat1.view(B, C, H*W)
+        feat0 = F.normalize(feat0, p=2, dim=1)
+        feat1 = F.normalize(feat1, p=2, dim=1)
         corr_volume = torch.einsum('bci,bcj->bji', feat0, feat1).reshape(B, (H*W), H , W) #16*16*16
         #print(feat0.requires_grad, corr_volume.requires_grad)
         return corr_volume
@@ -284,17 +285,11 @@ class XFeatModel(nn.Module):
     
 
 
-
-
 def train(args):
-    dist.init_process_group('nccl')
-    #torch._dynamo.config.verbose=True
-    gpus = int(os.environ['WORLD_SIZE'])
-    # create model and move it to GPU with id rank
-    rank = dist.get_rank()
-    print(f"Start running DDP on rank {rank}")
+    rank = 0
+    gpus = 1
     device_id = rank % torch.cuda.device_count()
-    roma.LOCAL_RANK = device_id
+    roma.LOCAL_RANK = 0
     torch.cuda.set_device(device_id)
     
     resolution = args.train_resolution
@@ -352,7 +347,6 @@ def train(args):
     checkpointer = CheckPoint(checkpoint_dir, experiment_name)
     model, optimizer, lr_scheduler, global_step = checkpointer.load(model, optimizer, lr_scheduler, global_step)
     roma.GLOBAL_STEP = global_step
-    ddp_model = DDP(model, device_ids=[device_id], find_unused_parameters = False, gradient_as_bucket_view=True)
     grad_scaler = torch.cuda.amp.GradScaler(growth_interval=1_000_000)
     grad_clip_norm = 0.01
     megadense_benchmark.benchmark(model)
@@ -369,7 +363,7 @@ def train(args):
             )
         )
         train_k_steps(
-            n, k, mega_dataloader, ddp_model, depth_loss, optimizer, lr_scheduler, grad_scaler, grad_clip_norm = grad_clip_norm,
+            n, k, mega_dataloader, model, depth_loss, optimizer, lr_scheduler, grad_scaler, grad_clip_norm = grad_clip_norm,
         )
         checkpointer.save(model, optimizer, lr_scheduler, roma.GLOBAL_STEP)
         wandb.log(megadense_benchmark.benchmark(model), step = roma.GLOBAL_STEP)
@@ -426,7 +420,7 @@ if __name__ == "__main__":
     parser.add_argument("--debug_mode", action='store_true')
     parser.add_argument("--dont_log_wandb", action='store_true')
     parser.add_argument("--train_resolution", default='medium')
-    parser.add_argument("--gpu_batch_size", default=4, type=int)
+    parser.add_argument("--gpu_batch_size", default=8, type=int)
     parser.add_argument("--wandb_entity", required = False)
 
     args, _ = parser.parse_known_args()
