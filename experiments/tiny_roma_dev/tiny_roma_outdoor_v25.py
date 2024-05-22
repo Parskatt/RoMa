@@ -149,24 +149,24 @@ class XFeatModel(nn.Module):
             pos_backward, pos_forward.permute(0,2,3,1), mode="bilinear", align_corners=False
         ).permute(0,2,3,1).reshape(B,H0,W0,2) 
         fb_error = (grid0.reshape(1, H0, W0, 2) - forward_backward).norm(dim=-1)
-        mnn = (fb_error < 1e-3).float()
+        mnn = (fb_error < 1e-3).float()[:,None]
         # try to interpolate warp using only near mnn matches
         kernel_size = 17 # TODO: bigger
         padding = kernel_size//2
         dist = 3
         match_kernel = (torch.linspace(-dist, dist, steps = kernel_size)).pow(2).neg().exp().reshape(1,1,1,kernel_size).expand(2,1,1,kernel_size).to(pos_forward)
-        x = mnn[:,None] * pos_forward
+        x = mnn * pos_forward
         x = torch.conv2d(x, match_kernel, padding = (0, padding), groups = 2)
         x = torch.conv2d(x, match_kernel.mT, padding = (padding,0), groups = 2)
         match_kernel = match_kernel[:1]
         cert = torch.conv2d(mnn, match_kernel, padding = (0,padding))
         cert = torch.conv2d(cert, match_kernel.mT, padding = (padding,0))
         
-        mnn_bool =  mnn[:,None].bool().expand_as(pos_forward)
+        mnn_bool =  mnn.bool().expand_as(pos_forward)
         pos_forward[~mnn_bool] = (x / cert.clamp(min=1e-6))[~mnn_bool]
         #pos_forward = F.interpolate(pos_forward)
         certainty = 10 * (mnn-.5) # logits +- 5
-        return torch.cat((pos_forward, certainty[:,None]), dim = 1)
+        return torch.cat((pos_forward, certainty), dim = 1)
     
     def visualize_warp(self, warp, certainty, im_A = None, im_B = None, 
                        im_A_path = None, im_B_path = None, device = "cuda", symmetric = True, save_path = None, unnormalize = False):
