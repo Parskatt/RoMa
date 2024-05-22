@@ -55,7 +55,7 @@ class XFeatModel(nn.Module):
         "XFeat: Accelerated Features for Lightweight Image Matching, CVPR 2024."
     """
 
-    def __init__(self, xfeat = None, freeze_xfeat = True, sample_mode = "threshold_balanced", symmetric = True):
+    def __init__(self, xfeat = None, freeze_xfeat = True, sample_mode = "threshold", symmetric = True):
         super().__init__()
         if xfeat is None:
             xfeat = torch.hub.load('verlab/accelerated_features', 'XFeat', pretrained = True, top_k = 4096).net
@@ -410,7 +410,7 @@ def test_hpatches(model, name):
     json.dump(hpatches_results, open(f"results/hpatches_{name}.json", "w"))
 
 def test_mega1500_poselib(model, name):
-    mega1500_benchmark = Mega1500PoseLibBenchmark("data/megadepth")
+    mega1500_benchmark = Mega1500PoseLibBenchmark("data/megadepth", num_ransac_iter = 1)
     mega1500_results = mega1500_benchmark.benchmark(model, model_name=name)
     json.dump(mega1500_results, open(f"results/mega1500_{name}.json", "w"))
 
@@ -435,7 +435,8 @@ if __name__ == "__main__":
     experiment_name = "tiny_roma_v3"
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = XFeatModel(freeze_xfeat=False).to(device)
-    
-    model.load_state_dict(torch.load("tiny_roma_outdoor_v3_latest.pth")["model"])
+    experiment_name = Path(__file__).name 
+    print(experiment_name)
+    model.load_state_dict(torch.load("tiny_roma_outdoor_v15_latest.pth")["model"])
     #test_mega1500(model, experiment_name)
     test_mega1500_poselib(model, experiment_name)
