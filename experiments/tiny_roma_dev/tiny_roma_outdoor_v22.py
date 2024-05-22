@@ -25,7 +25,7 @@ from roma.benchmarks import MegaDepthPoseEstimationBenchmark, MegadepthDenseBenc
 from roma.train.train import train_k_steps
 from roma.checkpointing import CheckPoint
 
-resolutions = {"low":(448, 448), "medium":(14*8*5, 14*8*5), "high":(14*8*6, 14*8*6)}
+resolutions = {"low":(448, 448), "medium":(14*8*5, 14*8*5), "high":(14*8*6, 14*8*6), "really_high": (1024, 1024)}
 
 def kde(x, std = 0.1):
     # use a gaussian kernel to estimate density
@@ -292,7 +292,7 @@ def train(args):
     roma.LOCAL_RANK = 0
     torch.cuda.set_device(device_id)
     
-    resolution = args.train_resolution
+    resolution = "really_high"
     wandb_log = not args.dont_log_wandb
     # TODO: use Path.name instead
     experiment_name = os.path.splitext(os.path.basename(__file__))[0]
@@ -330,8 +330,8 @@ def train(args):
     # Loss and optimizer
     depth_loss = RobustLosses(
         ce_weight=0.01, 
-        local_dist={4:32},
-        local_largest_scale=4,
+        local_dist={4:4, 8:8},
+        local_largest_scale=8,
         depth_interpolation_mode=depth_interpolation_mode,
         alpha = 0.5,
         c = 1e-4,
@@ -419,7 +419,6 @@ if __name__ == "__main__":
     parser.add_argument("--only_test", action='store_true')
     parser.add_argument("--debug_mode", action='store_true')
     parser.add_argument("--dont_log_wandb", action='store_true')
-    parser.add_argument("--train_resolution", default='medium')
     parser.add_argument("--gpu_batch_size", default=8, type=int)
     parser.add_argument("--wandb_entity", required = False)
 
