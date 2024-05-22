@@ -162,5 +162,4 @@ class RobustLosses(nn.Module):
                 delta_regression_losses = self.regression_loss(x2, prob, flow, scale_certainty, scale)
                 reg_loss = self.ce_weight * delta_regression_losses[f"delta_certainty_loss_{scale}"] + delta_regression_losses[f"delta_regression_loss_{scale}"]
                 tot_loss = tot_loss + reg_loss
-            prev_epe = (flow.permute(0,2,3,1) - x2).norm(dim=-1).detach()
         return tot_loss
