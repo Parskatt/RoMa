@@ -3,3 +3,5 @@
 *__pycache__*
 vis*
 workspace*
+jobs/*
+*ignore_me*
