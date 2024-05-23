@@ -5,3 +5,4 @@ vis*
 workspace*
 jobs/*
 *ignore_me*
+*.pth
