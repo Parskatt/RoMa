@@ -45,44 +45,20 @@ class RobustLosses(nn.Module):
         self.c = c
         self.epe_mask_prob_th = epe_mask_prob_th
 
-    def gm_cls_loss(self, x2, prob, scale_gm_cls, gm_certainty, scale):
-        with torch.no_grad():
-            B, C, H, W = scale_gm_cls.shape
-            device = x2.device
-            cls_res = round(math.sqrt(C))
-            G = torch.meshgrid(*[torch.linspace(-1+1/cls_res, 1 - 1/cls_res, steps = cls_res,device = device) for _ in range(2)])
-            G = torch.stack((G[1], G[0]), dim = -1).reshape(C,2)
-            GT = (G[None,:,None,None,:]-x2[:,None]).norm(dim=-1).min(dim=1).indices
-        cls_loss = F.cross_entropy(scale_gm_cls, GT, reduction  = 'none')[prob > 0.99]
-        if not torch.any(cls_loss):
-            cls_loss = (certainty_loss * 0.0)  # Prevent issues where prob is 0 everywhere
-
-        certainty_loss = F.binary_cross_entropy_with_logits(gm_certainty[:,0], prob)
+    def corr_volume_loss(self, mnn:torch.Tensor, corr_volume:torch.Tensor, scale):
+        b, h,w, h,w = corr_volume.shape
+        inv_temp = 10
+        corr_volume = corr_volume.reshape(-1, h*w, h*w)
+        nll = -(inv_temp*corr_volume).log_softmax(dim = 1) - (inv_temp*corr_volume).log_softmax(dim = 2)
+        corr_volume_loss = nll[mnn[:,0], mnn[:,1], mnn[:,2]].mean()
+        
         losses = {
-            f"gm_certainty_loss_{scale}": certainty_loss.mean(),
-            f"gm_cls_loss_{scale}": cls_loss.mean(),
+            f"gm_corr_volume_loss_{scale}": corr_volume_loss.mean(),
         }
         wandb.log(losses, step = roma.GLOBAL_STEP)
         return losses
 
-    def delta_cls_loss(self, x2, prob, flow_pre_delta, delta_cls, certainty, scale, offset_scale):
-        with torch.no_grad():
-            B, C, H, W = delta_cls.shape
-            device = x2.device
-            cls_res = round(math.sqrt(C))
-            G = torch.meshgrid(*[torch.linspace(-1+1/cls_res, 1 - 1/cls_res, steps = cls_res,device = device) for _ in range(2)])
-            G = torch.stack((G[1], G[0]), dim = -1).reshape(C,2) * offset_scale
-            GT = (G[None,:,None,None,:] + flow_pre_delta[:,None] - x2[:,None]).norm(dim=-1).min(dim=1).indices
-        cls_loss = F.cross_entropy(delta_cls, GT, reduction  = 'none')[prob > 0.99]
-        if not torch.any(cls_loss):
-            cls_loss = (certainty_loss * 0.0)  # Prevent issues where prob is 0 everywhere
-        certainty_loss = F.binary_cross_entropy_with_logits(certainty[:,0], prob)
-        losses = {
-            f"delta_certainty_loss_{scale}": certainty_loss.mean(),
-            f"delta_cls_loss_{scale}": cls_loss.mean(),
-        }
-        wandb.log(losses, step = roma.GLOBAL_STEP)
-        return losses
+    
 
     def regression_loss(self, x2, prob, flow, certainty, scale, eps=1e-8, mode = "delta"):
         epe = (flow.permute(0,2,3,1) - x2).norm(dim=-1)
@@ -116,12 +92,12 @@ class RobustLosses(nn.Module):
         # scale_weights due to differences in scale for regression gradients and classification gradients
         for scale in scales:
             scale_corresps = corresps[scale]
-            scale_certainty, flow_pre_delta, delta_cls, offset_scale, scale_gm_cls, scale_gm_certainty, flow, scale_gm_flow = (
+            scale_certainty, flow_pre_delta, delta_cls, offset_scale, scale_gm_corr_volume, scale_gm_certainty, flow, scale_gm_flow = (
                 scale_corresps["certainty"],
                 scale_corresps.get("flow_pre_delta"),
                 scale_corresps.get("delta_cls"),
                 scale_corresps.get("offset_scale"),
-                scale_corresps.get("gm_cls"),
+                scale_corresps.get("corr_volume"),
                 scale_corresps.get("gm_certainty"),
                 scale_corresps["flow"],
                 scale_corresps.get("gm_flow"),
@@ -141,25 +117,39 @@ class RobustLosses(nn.Module):
             batch["K2"],
             H=h,
             W=w,
-        )
+            )
             x2 = gt_warp.float()
             prob = gt_prob
                         
-            if scale_gm_cls is not None:
-                gm_cls_losses = self.gm_cls_loss(x2, prob, scale_gm_cls, scale_gm_certainty, scale)
-                gm_loss = self.ce_weight * gm_cls_losses[f"gm_certainty_loss_{scale}"] + gm_cls_losses[f"gm_cls_loss_{scale}"]
+            if scale_gm_corr_volume is not None:
+                gt_warp_back, _ = get_gt_warp(                
+                batch["im_B_depth"],
+                batch["im_A_depth"],
+                batch["T_1to2"].inverse(),
+                batch["K2"],
+                batch["K1"],
+                H=h,
+                W=w,
+                )
+                grid = torch.stack(torch.meshgrid(torch.linspace(-1+1/w, 1-1/w, w), torch.linspace(-1+1/h, 1-1/h, h), indexing='xy'), dim =-1).to(gt_warp.device)
+                #fwd_bck = F.grid_sample(gt_warp_back.permute(0,3,1,2), gt_warp, align_corners=False, mode = 'bilinear').permute(0,2,3,1)
+                #diff = (fwd_bck - grid).norm(dim = -1)
+                with torch.no_grad():
+                    D_B = torch.cdist(gt_warp.float().reshape(-1,h*w,2), grid.reshape(-1,h*w,2))
+                    D_A = torch.cdist(grid.reshape(-1,h*w,2), gt_warp_back.float().reshape(-1,h*w,2))
+                    inds = torch.nonzero((D_B == D_B.min(dim=-1, keepdim = True).values) 
+                                        * (D_A == D_A.min(dim=-2, keepdim = True).values)
+                                        * (D_B < 0.01)
+                                        * (D_A < 0.01))
+
+                gm_cls_losses = self.corr_volume_loss(inds, scale_gm_corr_volume, scale)
+                gm_loss = gm_cls_losses[f"gm_corr_volume_loss_{scale}"]
                 tot_loss = tot_loss + gm_loss
             elif scale_gm_flow is not None:
                 gm_flow_losses = self.regression_loss(x2, prob, scale_gm_flow, scale_gm_certainty, scale, mode = "gm")
                 gm_loss = self.ce_weight * gm_flow_losses[f"gm_certainty_loss_{scale}"] + gm_flow_losses[f"gm_regression_loss_{scale}"]
                 tot_loss = tot_loss +  gm_loss
-            
-            if delta_cls is not None:
-                delta_cls_losses = self.delta_cls_loss(x2, prob, flow_pre_delta, delta_cls, scale_certainty, scale, offset_scale)
-                delta_cls_loss = self.ce_weight * delta_cls_losses[f"delta_certainty_loss_{scale}"] + delta_cls_losses[f"delta_cls_loss_{scale}"]
-                tot_loss = tot_loss + delta_cls_loss
-            else:
-                delta_regression_losses = self.regression_loss(x2, prob, flow, scale_certainty, scale)
-                reg_loss = self.ce_weight * delta_regression_losses[f"delta_certainty_loss_{scale}"] + delta_regression_losses[f"delta_regression_loss_{scale}"]
-                tot_loss = tot_loss + reg_loss
+            delta_regression_losses = self.regression_loss(x2, prob, flow, scale_certainty, scale)
+            reg_loss = self.ce_weight * delta_regression_losses[f"delta_certainty_loss_{scale}"] + delta_regression_losses[f"delta_regression_loss_{scale}"]
+            tot_loss = tot_loss + reg_loss
         return tot_loss
