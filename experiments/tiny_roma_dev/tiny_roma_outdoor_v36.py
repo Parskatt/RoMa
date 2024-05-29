@@ -25,7 +25,7 @@ from roma.benchmarks import MegaDepthPoseEstimationBenchmark, MegadepthDenseBenc
 from roma.train.train import train_k_steps
 from roma.checkpointing import CheckPoint
 
-resolutions = {"low":(448, 448), "medium":(14*8*5, 14*8*5), "high":(14*8*6, 14*8*6)}
+resolutions = {"low":(448, 448), "medium":(14*8*5, 14*8*5), "high":(14*8*6, 14*8*6), "xfeat": (600,800)}
 
 def kde(x, std = 0.1):
     # use a gaussian kernel to estimate density
@@ -304,7 +304,7 @@ def train(args):
     roma.LOCAL_RANK = 0
     torch.cuda.set_device(device_id)
         
-    resolution = args.train_resolution
+    resolution = "xfeat"
     wandb_log = not args.dont_log_wandb
     experiment_name = Path(__file__).stem
     wandb_mode = "online" if wandb_log and rank == 0 else "disabled"
@@ -353,7 +353,9 @@ def train(args):
     optimizer = torch.optim.AdamW(parameters, weight_decay=0.01)
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
         optimizer, milestones=[(9*N/roma.STEP_SIZE)//10])
-    megadense_benchmark = MegadepthDenseBenchmark("data/megadepth", num_samples = 1000, h=h,w=w)
+    #megadense_benchmark = MegadepthDenseBenchmark("data/megadepth", num_samples = 1000, h=h,w=w)
+    mega1500_benchmark = Mega1500PoseLibBenchmark("data/megadepth", num_ransac_iter = 1, test_every = 30)
+
     checkpointer = CheckPoint(checkpoint_dir, experiment_name)
     model, optimizer, lr_scheduler, global_step = checkpointer.load(model, optimizer, lr_scheduler, global_step)
     roma.GLOBAL_STEP = global_step
@@ -376,7 +378,7 @@ def train(args):
             n, k, mega_dataloader, model, depth_loss, optimizer, lr_scheduler, grad_scaler, grad_clip_norm = grad_clip_norm,
         )
         checkpointer.save(model, optimizer, lr_scheduler, roma.GLOBAL_STEP)
-        wandb.log(megadense_benchmark.benchmark(model), step = roma.GLOBAL_STEP)
+        wandb.log(mega1500_benchmark.benchmark(model, model_name=experiment_name), step = roma.GLOBAL_STEP)
 
 def test_mega_8_scenes(model, name):
     mega_8_scenes_benchmark = MegaDepthPoseEstimationBenchmark("data/megadepth",
@@ -416,7 +418,7 @@ def test_hpatches(model, name):
     json.dump(hpatches_results, open(f"results/hpatches_{name}.json", "w"))
 
 def test_mega1500_poselib(model, name):
-    mega1500_benchmark = Mega1500PoseLibBenchmark("data/megadepth", num_ransac_iter = 1, test_every = 30)
+    mega1500_benchmark = Mega1500PoseLibBenchmark("data/megadepth", num_ransac_iter = 5, test_every = 1)
     mega1500_results = mega1500_benchmark.benchmark(model, model_name=name)
     json.dump(mega1500_results, open(f"results/mega1500_{name}.json", "w"))
 
@@ -430,7 +432,7 @@ if __name__ == "__main__":
     parser.add_argument("--debug_mode", action='store_true')
     parser.add_argument("--dont_log_wandb", action='store_true')
     parser.add_argument("--train_resolution", default='medium')
-    parser.add_argument("--gpu_batch_size", default=4, type=int)
+    parser.add_argument("--gpu_batch_size", default=8, type=int)
     parser.add_argument("--wandb_entity", required = False)
 
     args, _ = parser.parse_known_args()

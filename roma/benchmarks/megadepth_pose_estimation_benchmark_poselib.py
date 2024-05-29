@@ -9,13 +9,10 @@ import kornia.geometry.epipolar as kepi
 
 # wrap cause pyposelib is still in dev
 # will add in deps later
-try:
-    import pyposelib
-except:
-    pass
+import poselib
 
 class Mega1500PoseLibBenchmark:
-    def __init__(self, data_root="data/megadepth", scene_names = None, num_ransac_iter = 5) -> None:
+    def __init__(self, data_root="data/megadepth", scene_names = None, num_ransac_iter = 5, test_every = 1) -> None:
         if scene_names is None:
             self.scene_names = [
                 "0015_0.1_0.3.npz",
@@ -32,6 +29,7 @@ class Mega1500PoseLibBenchmark:
         ]
         self.data_root = data_root
         self.num_ransac_iter = num_ransac_iter
+        self.test_every = test_every
 
     def benchmark(self, model, model_name = None):
         with torch.no_grad():
@@ -46,7 +44,7 @@ class Mega1500PoseLibBenchmark:
                 intrinsics = scene["intrinsics"]
                 poses = scene["poses"]
                 im_paths = scene["image_paths"]
-                pair_inds = range(len(pairs))
+                pair_inds = range(len(pairs))[::self.test_every]
                 for pairind in (pbar := tqdm(pair_inds, desc = "Current AUC: ?")):
                     idx1, idx2 = pairs[pairind][0]
                     K1 = intrinsics[idx1].copy()
@@ -91,17 +89,18 @@ class Mega1500PoseLibBenchmark:
                         kpts2 = kpts2[shuffling]
                         try:
                             threshold = 1 
-                            camera1 = pyposelib.Camera("PINHOLE", [K1[0, 0], K1[1, 1], K1[0, 2], K1[1, 2]], w1, h1)
-                            camera2 = pyposelib.Camera("PINHOLE", [K2[0, 0], K2[1, 1], K2[0, 2], K2[1, 2]], w2, h2)
-                            relpose, res = pyposelib.estimate_relative_pose(
-                                kpts1, kpts2, 
-                                camera1, camera2, 
-                                pyposelib.RansacOptions(
-                                    max_epipolar_error=threshold, 
-                                    max_reproj_error=2*threshold,
-                                    max_iterations=10_000),
-                                pyposelib.BundleOptions())
-                            R_est, t_est = relpose.R, relpose.t[:,None]
+                            camera1 = {'model': 'PINHOLE', 'width': w1, 'height': h1, 'params': K1[[0,1,0,1], [0,1,2,2]]}
+                            camera2 = {'model': 'PINHOLE', 'width': w2, 'height': h2, 'params': K2[[0,1,0,1], [0,1,2,2]]}
+                            relpose, res = poselib.estimate_relative_pose(
+                                kpts1, 
+                                kpts2,
+                                camera1,
+                                camera2,
+                                ransac_opt = {"max_reproj_error": 2, "max_epipolar_error": 1, "min_inliers": 8, "max_iterations": 10_000},
+                            )
+                            Rt_est  = relpose.Rt
+                            R_est, t_est = Rt_est[:3,:3], Rt_est[:3,3:]
+                            mask = np.array(res['inliers']).astype(np.float32)
                             T1_to_2_est = np.concatenate((R_est, t_est), axis=-1)  #
                             e_t, e_R = compute_pose_error(T1_to_2_est, R, t)
                             e_pose = max(e_t, e_R)
