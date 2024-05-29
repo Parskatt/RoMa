@@ -26,6 +26,7 @@ class RobustLosses(nn.Module):
         alpha = 1.,
         c = 1e-3,
         epe_mask_prob_th = None,
+        cert_only_on_consistent_depth = False,
     ):
         super().__init__()
         if local_dist is None:
@@ -44,6 +45,7 @@ class RobustLosses(nn.Module):
         self.alpha = alpha
         self.c = c
         self.epe_mask_prob_th = epe_mask_prob_th
+        self.cert_only_on_consistent_depth = cert_only_on_consistent_depth
 
     def corr_volume_loss(self, mnn:torch.Tensor, corr_volume:torch.Tensor, scale):
         b, h,w, h,w = corr_volume.shape
@@ -72,7 +74,10 @@ class RobustLosses(nn.Module):
             gt_cert = prob * (epe < scale * self.epe_mask_prob_th)
         else:
             gt_cert = prob
-        ce_loss = F.binary_cross_entropy_with_logits(certainty[:, 0], gt_cert)
+        if self.cert_only_on_consistent_depth:
+            ce_loss = F.binary_cross_entropy_with_logits(certainty[:, 0][prob > 0], gt_cert[prob > 0])
+        else:    
+            ce_loss = F.binary_cross_entropy_with_logits(certainty[:, 0], gt_cert)
         a = self.alpha[scale] if isinstance(self.alpha, dict) else self.alpha
         cs = self.c * scale
         x = epe[prob > 0.99]
