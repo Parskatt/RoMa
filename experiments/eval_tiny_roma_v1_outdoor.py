@@ -45,6 +45,7 @@ def test_mega1500(model, name):
     json.dump(mega1500_results, open(f"results/mega1500_{name}.json", "w"))
 
 def test_mega1500_poselib(model, name):
+    #model.exact_softmax = True
     mega1500_benchmark = Mega1500PoseLibBenchmark("data/megadepth", num_ransac_iter = 1, test_every = 1)
     mega1500_results = mega1500_benchmark.benchmark(model, model_name=name)
     json.dump(mega1500_results, open(f"results/mega1500_poselib_{name}.json", "w"))
@@ -86,8 +87,9 @@ if __name__ == "__main__":
     torch.backends.cudnn.allow_tf32 = True # allow tf32 on cudnn
     from roma import tiny_roma_v1_outdoor
 
-    experiment_name = "tiny_roma_v1_outdoor"#Path(__file__).stem
+    experiment_name = Path(__file__).stem
     device = 'cuda'
-    model = tiny_roma_v1_outdoor(device, weights = torch.load(f"{experiment_name}.pth"))
-    test_mega1500_poselib(model, experiment_name)
-    
+    model = tiny_roma_v1_outdoor(device)
+    #test_mega1500_poselib(model, experiment_name)
+    test_mega_8_scenes_poselib(model, experiment_name)
+ 

@@ -84,13 +84,29 @@ Our codebase builds on the code in [DKM](https://github.com/Parskatt/DKM).
 ## Tiny RoMa
 If you find that RoMa is too heavy, you might want to try Tiny RoMa which is built on top of XFeat.
 
+Mega1500:
 |  | AUC@5 | AUC@10 | AUC@20 |
 |----------|----------|----------|----------|
-| XFeat    |     |     |     |
+| XFeat    | 46.4    | 58.9    | 69.2    |
 | XFeat*    |  51.9   | 67.2    | 78.9    |
-| Tiny RoMa v1    |     |     |     |
+| Tiny RoMa v1    | 56.4 | 69.5 | 79.5     |
 | RoMa    |  -   | -    | -    |
 
+Mega-8-Scenes (See DKM):
+|  | AUC@5 | AUC@10 | AUC@20 |
+|----------|----------|----------|----------|
+| XFeat    | -    | -    | -    |
+| XFeat*    |  -   | -    | -    |
+| Tiny RoMa v1    | - | - | -     |
+| RoMa    |  -   | -    | -    |
+
+IMC22:
+|  | mAA@10 |
+|----------|----------|
+| XFeat    | -    |
+| XFeat*    |  -   |
+| Tiny RoMa v1    | - |
+| RoMa    |  -   |
 
 ## BibTeX
 If you find our models useful, please consider citing our paper!

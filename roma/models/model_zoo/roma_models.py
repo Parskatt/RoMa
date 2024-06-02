@@ -13,6 +13,7 @@ def tiny_roma_v1_model(weights = None, freeze_xfeat=False, exact_softmax=False):
     if weights is not None:
         model.load_state_dict(weights)
     return model
+
 def roma_model(resolution, upsample_preds, device = None, weights=None, dinov2_weights=None, amp_dtype: torch.dtype=torch.float16, **kwargs):
     # roma weights and dinov2 weights are loaded seperately, as dinov2 weights are not parameters
     #torch.backends.cuda.matmul.allow_tf32 = True # allow tf32 on matmul TODO: these probably ruin stuff, should be careful

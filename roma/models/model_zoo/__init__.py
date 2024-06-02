@@ -8,12 +8,15 @@ weight_urls = {
         "indoor": "https://github.com/Parskatt/storage/releases/download/roma/roma_indoor.pth",
     },
     "tiny_roma_v1": {
-        "outdoor": None,
+        "outdoor": "https://github.com/Parskatt/storage/releases/download/roma/tiny_roma_v1_outdoor.pth",
     },
     "dinov2": "https://dl.fbaipublicfiles.com/dinov2/dinov2_vitl14/dinov2_vitl14_pretrain.pth", #hopefully this doesnt change :D
 }
 
 def tiny_roma_v1_outdoor(device, weights = None):
+   if weights is None:
+        weights = torch.hub.load_state_dict_from_url(weight_urls["tiny_roma_v1"]["outdoor"],
+                                                     map_location=device)
    return tiny_roma_v1_model(weights = weights).to(device) 
 
 def roma_outdoor(device, weights=None, dinov2_weights=None, coarse_res: Union[int,tuple[int,int]] = 560, upsample_res: Union[int,tuple[int,int]] = 864, amp_dtype: torch.dtype = torch.float16):
