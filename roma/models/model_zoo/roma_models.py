@@ -4,7 +4,15 @@ import torch
 from roma.models.matcher import *
 from roma.models.transformer import Block, TransformerDecoder, MemEffAttention
 from roma.models.encoders import *
+from roma.models.tiny import TinyRoMa
 
+def tiny_roma_v1_model(weights = None, freeze_xfeat=False, exact_softmax=False):
+    model = TinyRoMa(
+        freeze_xfeat=freeze_xfeat, 
+        exact_softmax=exact_softmax)
+    if weights is not None:
+        model.load_state_dict(weights)
+    return model
 def roma_model(resolution, upsample_preds, device = None, weights=None, dinov2_weights=None, amp_dtype: torch.dtype=torch.float16, **kwargs):
     # roma weights and dinov2 weights are loaded seperately, as dinov2 weights are not parameters
     #torch.backends.cuda.matmul.allow_tf32 = True # allow tf32 on matmul TODO: these probably ruin stuff, should be careful

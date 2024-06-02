@@ -17,15 +17,15 @@ import wandb
 from PIL import Image
 from torchvision.transforms import ToTensor
 
-from roma.benchmarks import MegadepthDenseBenchmark
-from roma.benchmarks import Mega1500PoseLibBenchmark
+from roma.benchmarks import MegadepthDenseBenchmark, ScanNetBenchmark
+from roma.benchmarks import Mega1500PoseLibBenchmark, ScanNetPoselibBenchmark
 from roma.datasets.megadepth import MegadepthBuilder
 from roma.losses.robust_loss_tiny_roma import RobustLosses
 from roma.benchmarks import MegaDepthPoseEstimationBenchmark, MegadepthDenseBenchmark, HpatchesHomogBenchmark
 from roma.train.train import train_k_steps
 from roma.checkpointing import CheckPoint
 
-resolutions = {"low":(448, 448), "medium":(14*8*5, 14*8*5), "high":(14*8*6, 14*8*6), "really_high": (1024, 1024)}
+resolutions = {"low":(448, 448), "medium":(14*8*5, 14*8*5), "high":(14*8*6, 14*8*6), "xfeat": (600,800), "big": (768, 1024)}
 
 def kde(x, std = 0.1):
     # use a gaussian kernel to estimate density
@@ -55,7 +55,11 @@ class XFeatModel(nn.Module):
         "XFeat: Accelerated Features for Lightweight Image Matching, CVPR 2024."
     """
 
-    def __init__(self, xfeat = None, freeze_xfeat = True, sample_mode = "threshold_balanced", symmetric = True):
+    def __init__(self, xfeat = None, 
+                 freeze_xfeat = True, 
+                 sample_mode = "threshold_balanced", 
+                 symmetric = False, 
+                 exact_softmax = False):
         super().__init__()
         if xfeat is None:
             xfeat = torch.hub.load('verlab/accelerated_features', 'XFeat', pretrained = True, top_k = 4096).net
@@ -68,7 +72,7 @@ class XFeatModel(nn.Module):
         self.freeze_xfeat = freeze_xfeat
         match_dim = 256
         self.coarse_matcher = nn.Sequential(
-            BasicLayer(64+64+64+2, match_dim,),
+            BasicLayer(64+64+2, match_dim,),
             BasicLayer(match_dim, match_dim,), 
             BasicLayer(match_dim, match_dim,), 
             BasicLayer(match_dim, match_dim,), 
@@ -81,11 +85,25 @@ class XFeatModel(nn.Module):
             BasicLayer(fine_match_dim, fine_match_dim,), 
             nn.Conv2d(fine_match_dim, 3, kernel_size=1, bias=True, padding=0),)
         self.sample_mode = sample_mode
-        self.sample_thresh = 0.05
+        self.sample_thresh = 0.2
         self.symmetric = symmetric
-        
+        self.exact_softmax = exact_softmax
+    
+    @property
+    def device(self):
+        return self.fine_matcher[-1].weight.device
+    
+    def preprocess_tensor(self, x):
+        """ Guarantee that image is divisible by 32 to avoid aliasing artifacts. """
+        H, W = x.shape[-2:]
+        _H, _W = (H//32) * 32, (W//32) * 32
+        rh, rw = H/_H, W/_W
+
+        x = F.interpolate(x, (_H, _W), mode='bilinear', align_corners=False)
+        return x, rh, rw        
+    
     def forward_single(self, x):
-        with torch.inference_mode(self.freeze_xfeat):
+        with torch.inference_mode(self.freeze_xfeat or not self.training):
             xfeat = self.xfeat[0]
             with torch.no_grad():
                 x = x.mean(dim=1, keepdim = True)
@@ -118,22 +136,35 @@ class XFeatModel(nn.Module):
         kpts = torch.stack((W/2 * (coords[...,0]+1), H/2 * (coords[...,1]+1)),axis=-1)
         return kpts
     
-    def pos_embed(self, corr_volume):
-        H,W = corr_volume.shape[-2:] 
+    def pos_embed(self, corr_volume: torch.Tensor):
+        B, H1, W1, H0, W0 = corr_volume.shape 
         grid = torch.stack(
-            torch.meshgrid(
-                torch.linspace(-1+1/W,1-1/W, W), 
-                torch.linspace(-1+1/H,1-1/H, H), 
-                indexing = "xy"), 
-            dim = -1).float().cuda().reshape(H*W, 2)
-        corrs, inds = corr_volume.max(dim=1) # B, HW, H, W
-        #TODO: xfeat uses 0.82 as threshold, we could use some threshold for when to sample
-        pos_embeddings = grid[inds.view(-1)].reshape(*corrs.shape, 2).permute(0,3,1,2)
+                torch.meshgrid(
+                    torch.linspace(-1+1/W1,1-1/W1, W1), 
+                    torch.linspace(-1+1/H1,1-1/H1, H1), 
+                    indexing = "xy"), 
+                dim = -1).float().to(corr_volume).reshape(H1*W1, 2)
+        down = 4
+        if not self.training and not self.exact_softmax:
+            grid_lr = torch.stack(
+                torch.meshgrid(
+                    torch.linspace(-1+down/W1,1-down/W1, W1//down), 
+                    torch.linspace(-1+down/H1,1-down/H1, H1//down), 
+                    indexing = "xy"), 
+                dim = -1).float().to(corr_volume).reshape(H1*W1 //down**2, 2)
+            cv = corr_volume
+            best_match = cv.reshape(B,H1*W1,H0,W0).argmax(dim=1) # B, HW, H, W
+            P_lowres = torch.cat((cv[:,::down,::down].reshape(B,H1*W1 // down**2,H0,W0), best_match[:,None]),dim=1).softmax(dim=1)
+            pos_embeddings = torch.einsum('bchw,cd->bdhw', P_lowres[:,:-1], grid_lr)
+            pos_embeddings += P_lowres[:,-1] * grid[best_match].permute(0,3,1,2)
+        else:
+            P = corr_volume.reshape(B,H1*W1,H0,W0).softmax(dim=1) # B, HW, H, W
+            pos_embeddings = torch.einsum('bchw,cd->bdhw', P, grid)
         return pos_embeddings
     
     def visualize_warp(self, warp, certainty, im_A = None, im_B = None, 
-                       im_A_path = None, im_B_path = None, device = "cuda", symmetric = True, save_path = None, unnormalize = False):
-        #assert symmetric == True, "Currently assuming bidirectional warp, might update this if someone complains ;)"
+                       im_A_path = None, im_B_path = None, symmetric = True, save_path = None, unnormalize = False):
+        device = warp.device
         H,W2,_ = warp.shape
         W = W2//2 if symmetric else W2
         if im_A is None:
@@ -175,21 +206,18 @@ class XFeatModel(nn.Module):
             return:
                 corr_volume -> torch.Tensor(B, H, W, H, W)
         """
-        B, C, H, W = feat0.shape
-        feat0 = feat0.view(B, C, H*W)
-        feat1 = feat1.view(B, C, H*W)
-        feat0 = F.normalize(feat0, p=2, dim=1)
-        feat1 = F.normalize(feat1, p=2, dim=1)
-        corr_volume = torch.einsum('bci,bcj->bji', feat0, feat1).reshape(B, (H*W), H , W) #16*16*16
-        #print(feat0.requires_grad, corr_volume.requires_grad)
+        B, C, H0, W0 = feat0.shape
+        B, C, H1, W1 = feat1.shape
+        feat0 = feat0.view(B, C, H0*W0)
+        feat1 = feat1.view(B, C, H1*W1)
+        corr_volume = torch.einsum('bci,bcj->bji', feat0, feat1).reshape(B, H1, W1, H0 , W0)/math.sqrt(C) #16*16*16
         return corr_volume
     
     @torch.inference_mode()
     def match_from_path(self, im0_path, im1_path):
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        H,W = 1024, 1024
-        im0 = ToTensor()(Image.open(im0_path).resize((W,H)))[None].to(device)
-        im1 = ToTensor()(Image.open(im1_path).resize((W,H)))[None].to(device)
+        device = self.device
+        im0 = ToTensor()(Image.open(im0_path))[None].to(device)
+        im1 = ToTensor()(Image.open(im1_path))[None].to(device)
         return self.match(im0, im1, batched = False)
     
     @torch.inference_mode()
@@ -197,21 +225,29 @@ class XFeatModel(nn.Module):
         # stupid
         if isinstance(im0, (str, Path)):
             return self.match_from_path(im0, im1)
-        B,C,H,W = im0.shape
+        elif isinstance(im0, Image.Image):
+            batched = False
+            device = self.device
+            im0 = ToTensor()(im0)[None].to(device)
+            im1 = ToTensor()(im1)[None].to(device)
+ 
+        B,C,H0,W0 = im0.shape
+        B,C,H1,W1 = im1.shape
         self.train(False)
         corresps = self.forward({"im_A":im0, "im_B":im1})
+        #return 1,1
         flow = F.interpolate(
             corresps[4]["flow"], 
-            size = (H,W), 
-            mode = "bilinear", align_corners = False).permute(0,2,3,1).reshape(B,H,W,2)
+            size = (H0, W0), 
+            mode = "bilinear", align_corners = False).permute(0,2,3,1).reshape(B,H0,W0,2)
         grid = torch.stack(
             torch.meshgrid(
-                torch.linspace(-1+1/W,1-1/W, W), 
-                torch.linspace(-1+1/H,1-1/H, H), 
+                torch.linspace(-1+1/W0,1-1/W0, W0), 
+                torch.linspace(-1+1/H0,1-1/H0, H0), 
                 indexing = "xy"), 
-            dim = -1).float().to(flow.device).expand(B, H, W, 2)
+            dim = -1).float().to(flow.device).expand(B, H0, W0, 2)
         
-        certainty = F.interpolate(corresps[4]["certainty"], size = (H,W), mode = "bilinear", align_corners = False)
+        certainty = F.interpolate(corresps[4]["certainty"], size = (H0,W0), mode = "bilinear", align_corners = False)
         warp, cert = torch.cat((grid, flow), dim = -1), certainty[:,0].sigmoid()
         if batched:
             return warp, cert
@@ -256,8 +292,13 @@ class XFeatModel(nn.Module):
         """
         im0 = batch["im_A"]
         im1 = batch["im_B"]
-        B, C, H, W = im0.shape
         corresps = {}
+        im0, rh0, rw0 = self.preprocess_tensor(im0)
+        im1, rh1, rw1 = self.preprocess_tensor(im1)
+        B, C, H0, W0 = im0.shape
+        B, C, H1, W1 = im1.shape
+        to_normalized = torch.tensor((2/W1, 2/H1, 1)).to(im0.device)[None,:,None,None]
+ 
         if im0.shape[-2:] == im1.shape[-2:]:
             x = torch.cat([im0, im1], dim=0)
             x = self.forward_single(x)
@@ -270,19 +311,19 @@ class XFeatModel(nn.Module):
         coarse_warp = self.pos_embed(corr_volume)
         coarse_matches = torch.cat((coarse_warp, torch.zeros_like(coarse_warp[:,-1:])), dim=1)
         feats_x1_c_warped = F.grid_sample(feats_x1_c, coarse_matches.permute(0, 2, 3, 1)[...,:2], mode = 'bilinear', align_corners = False)
-        coarse_matches_delta = self.coarse_matcher(torch.cat((feats_x0_c, feats_x1_c, feats_x1_c_warped, coarse_warp), dim=1))
-        #print(f"{coarse_matches_delta=}")
-        corresps[8] = {"gm_flow": coarse_matches[:,:2], "gm_certainty": coarse_matches[:,2:]}
-        coarse_matches = coarse_matches + coarse_matches_delta
+        coarse_matches_delta = self.coarse_matcher(torch.cat((feats_x0_c, feats_x1_c_warped, coarse_warp), dim=1))
+        coarse_matches = coarse_matches + coarse_matches_delta * to_normalized
         corresps[8] = {"flow": coarse_matches[:,:2], "certainty": coarse_matches[:,2:]}
-        coarse_matches_up = F.interpolate(coarse_matches, size = x[0].shape[-2:], mode = "bilinear", align_corners = False)        
+        coarse_matches_up = F.interpolate(coarse_matches, size = feats_x0_f.shape[-2:], mode = "bilinear", align_corners = False)        
         coarse_matches_up_detach = coarse_matches_up.detach()#note the detach
         feats_x1_f_warped = F.grid_sample(feats_x1_f, coarse_matches_up_detach.permute(0, 2, 3, 1)[...,:2], mode = 'bilinear', align_corners = False)
         fine_matches_delta = self.fine_matcher(torch.cat((feats_x0_f, feats_x1_f_warped, coarse_matches_up_detach[:,:2]), dim=1))
-        fine_matches = coarse_matches_up_detach+fine_matches_delta
+        fine_matches = coarse_matches_up_detach+fine_matches_delta * to_normalized
         corresps[4] = {"flow": fine_matches[:,:2], "certainty": fine_matches[:,2:]}
         return corresps
     
+
+
 
 
 def train(args):
@@ -291,23 +332,22 @@ def train(args):
     device_id = rank % torch.cuda.device_count()
     roma.LOCAL_RANK = 0
     torch.cuda.set_device(device_id)
-    
-    resolution = "really_high"
+        
+    resolution = "big"
     wandb_log = not args.dont_log_wandb
-    # TODO: use Path.name instead
-    experiment_name = os.path.splitext(os.path.basename(__file__))[0]
+    experiment_name = Path(__file__).stem
     wandb_mode = "online" if wandb_log and rank == 0 else "disabled"
     wandb.init(project="roma", entity=args.wandb_entity, name=experiment_name, reinit=False, mode = wandb_mode)
     checkpoint_dir = "workspace/checkpoints/"
     h,w = resolutions[resolution]
-    model = XFeatModel(freeze_xfeat = True).to(device_id)
+    model = XFeatModel(freeze_xfeat = False).to(device_id)
     # Num steps
     global_step = 0
     batch_size = args.gpu_batch_size
     step_size = gpus*batch_size
     roma.STEP_SIZE = step_size
     
-    N = (32 * 250000)  # 250k steps of batch size 32
+    N = 2_000_000  # 2M pairs
     # checkpoint every
     k = 25000 // roma.STEP_SIZE
 
@@ -330,12 +370,11 @@ def train(args):
     # Loss and optimizer
     depth_loss = RobustLosses(
         ce_weight=0.01, 
-        local_dist={4:4, 8:8},
-        local_largest_scale=8,
+        local_dist={4:4},
         depth_interpolation_mode=depth_interpolation_mode,
-        alpha = 0.5,
+        alpha = {4:0.15, 8:0.15},
         c = 1e-4,
-        epe_mask_prob_th = 0.01,
+        epe_mask_prob_th = 0.001,
         )
     parameters = [
         {"params": model.parameters(), "lr": roma.STEP_SIZE * 1e-4 / 8},
@@ -343,13 +382,15 @@ def train(args):
     optimizer = torch.optim.AdamW(parameters, weight_decay=0.01)
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
         optimizer, milestones=[(9*N/roma.STEP_SIZE)//10])
-    megadense_benchmark = MegadepthDenseBenchmark("data/megadepth", num_samples = 1000, h=h,w=w)
+    #megadense_benchmark = MegadepthDenseBenchmark("data/megadepth", num_samples = 1000, h=h,w=w)
+    mega1500_benchmark = Mega1500PoseLibBenchmark("data/megadepth", num_ransac_iter = 1, test_every = 30)
+
     checkpointer = CheckPoint(checkpoint_dir, experiment_name)
     model, optimizer, lr_scheduler, global_step = checkpointer.load(model, optimizer, lr_scheduler, global_step)
     roma.GLOBAL_STEP = global_step
     grad_scaler = torch.cuda.amp.GradScaler(growth_interval=1_000_000)
     grad_clip_norm = 0.01
-    megadense_benchmark.benchmark(model)
+    #megadense_benchmark.benchmark(model)
     for n in range(roma.GLOBAL_STEP, N, k * roma.STEP_SIZE):
         mega_sampler = torch.utils.data.WeightedRandomSampler(
             mega_ws, num_samples = batch_size * k, replacement=False
@@ -366,7 +407,7 @@ def train(args):
             n, k, mega_dataloader, model, depth_loss, optimizer, lr_scheduler, grad_scaler, grad_clip_norm = grad_clip_norm,
         )
         checkpointer.save(model, optimizer, lr_scheduler, roma.GLOBAL_STEP)
-        wandb.log(megadense_benchmark.benchmark(model), step = roma.GLOBAL_STEP)
+        wandb.log(mega1500_benchmark.benchmark(model, model_name=experiment_name), step = roma.GLOBAL_STEP)
 
 def test_mega_8_scenes(model, name):
     mega_8_scenes_benchmark = MegaDepthPoseEstimationBenchmark("data/megadepth",
@@ -395,20 +436,41 @@ def test_mega1500(model, name):
     mega1500_results = mega1500_benchmark.benchmark(model, model_name=name)
     json.dump(mega1500_results, open(f"results/mega1500_{name}.json", "w"))
 
-def test_mega_dense(model, name):
-    megadense_benchmark = MegadepthDenseBenchmark("data/megadepth", num_samples = 1000)
-    megadense_results = megadense_benchmark.benchmark(model)
-    json.dump(megadense_results, open(f"results/mega_dense_{name}.json", "w"))
-    
-def test_hpatches(model, name):
-    hpatches_benchmark = HpatchesHomogBenchmark("data/hpatches")
-    hpatches_results = hpatches_benchmark.benchmark(model)
-    json.dump(hpatches_results, open(f"results/hpatches_{name}.json", "w"))
-
 def test_mega1500_poselib(model, name):
-    mega1500_benchmark = Mega1500PoseLibBenchmark("data/megadepth")
+    mega1500_benchmark = Mega1500PoseLibBenchmark("data/megadepth", num_ransac_iter = 1, test_every = 1)
     mega1500_results = mega1500_benchmark.benchmark(model, model_name=name)
-    json.dump(mega1500_results, open(f"results/mega1500_{name}.json", "w"))
+    json.dump(mega1500_results, open(f"results/mega1500_poselib_{name}.json", "w"))
+
+def test_mega_8_scenes_poselib(model, name):
+    mega1500_benchmark = Mega1500PoseLibBenchmark("data/megadepth", num_ransac_iter = 1, test_every = 1,
+                                                  scene_names=['mega_8_scenes_0019_0.1_0.3.npz',
+                                                    'mega_8_scenes_0025_0.1_0.3.npz',
+                                                    'mega_8_scenes_0021_0.1_0.3.npz',
+                                                    'mega_8_scenes_0008_0.1_0.3.npz',
+                                                    'mega_8_scenes_0032_0.1_0.3.npz',
+                                                    'mega_8_scenes_1589_0.1_0.3.npz',
+                                                    'mega_8_scenes_0063_0.1_0.3.npz',
+                                                    'mega_8_scenes_0024_0.1_0.3.npz',
+                                                    'mega_8_scenes_0019_0.3_0.5.npz',
+                                                    'mega_8_scenes_0025_0.3_0.5.npz',
+                                                    'mega_8_scenes_0021_0.3_0.5.npz',
+                                                    'mega_8_scenes_0008_0.3_0.5.npz',
+                                                    'mega_8_scenes_0032_0.3_0.5.npz',
+                                                    'mega_8_scenes_1589_0.3_0.5.npz',
+                                                    'mega_8_scenes_0063_0.3_0.5.npz',
+                                                    'mega_8_scenes_0024_0.3_0.5.npz'])
+    mega1500_results = mega1500_benchmark.benchmark(model, model_name=name)
+    json.dump(mega1500_results, open(f"results/mega_8_scenes_poselib_{name}.json", "w"))
+
+def test_scannet_poselib(model, name):
+    scannet_benchmark = ScanNetPoselibBenchmark("data/scannet")
+    scannet_results = scannet_benchmark.benchmark(model)
+    json.dump(scannet_results, open(f"results/scannet_{name}.json", "w"))
+
+def test_scannet(model, name):
+    scannet_benchmark = ScanNetBenchmark("data/scannet")
+    scannet_results = scannet_benchmark.benchmark(model)
+    json.dump(scannet_results, open(f"results/scannet_{name}.json", "w"))
 
 if __name__ == "__main__":
     os.environ["TORCH_CUDNN_V8_API_ENABLED"] = "1" # For BF16 computations
@@ -419,6 +481,7 @@ if __name__ == "__main__":
     parser.add_argument("--only_test", action='store_true')
     parser.add_argument("--debug_mode", action='store_true')
     parser.add_argument("--dont_log_wandb", action='store_true')
+    parser.add_argument("--train_resolution", default='medium')
     parser.add_argument("--gpu_batch_size", default=8, type=int)
     parser.add_argument("--wandb_entity", required = False)
 
@@ -427,10 +490,9 @@ if __name__ == "__main__":
     if not args.only_test:
         train(args)
 
-    experiment_name = "tiny_roma_v3"
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = XFeatModel(freeze_xfeat=False).to(device)
-    
-    model.load_state_dict(torch.load("tiny_roma_outdoor_v3_latest.pth")["model"])
-    #test_mega1500(model, experiment_name)
+    experiment_name = "tiny_roma_v1_outdoor"#Path(__file__).stem
+    device = 'cuda'
+    model = XFeatModel(freeze_xfeat=False, exact_softmax=False).to(device)
+    model.load_state_dict(torch.load(f"{experiment_name}.pth"))
     test_mega1500_poselib(model, experiment_name)
+    

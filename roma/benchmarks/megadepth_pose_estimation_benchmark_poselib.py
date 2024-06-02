@@ -60,10 +60,6 @@ class Mega1500PoseLibBenchmark:
                     dense_matches, dense_certainty = model.match(
                         im_A_path, im_B_path, K1.copy(), K2.copy(), T1_to_2.copy()
                     )
-                    model.visualize_warp(
-                        dense_matches, dense_certainty,
-                        im_A_path = im_A_path, im_B_path = im_B_path,
-                        save_path = "warp.jpg", symmetric = False)
                     sparse_matches,_ = model.sample(
                         dense_matches, dense_certainty, 5_000
                     )
@@ -72,15 +68,6 @@ class Mega1500PoseLibBenchmark:
                     w1, h1 = im_A.size
                     im_B = Image.open(im_B_path)
                     w2, h2 = im_B.size
-                    if False: # Note: we keep this true as it was used in DKM/RoMa papers. There is very little difference compared to setting to False. 
-                        scale1 = 1200 / max(w1, h1)
-                        scale2 = 1200 / max(w2, h2)
-                        w1, h1 = scale1 * w1, scale1 * h1
-                        w2, h2 = scale2 * w2, scale2 * h2
-                        K1, K2 = K1.copy(), K2.copy()
-                        K1[:2] = K1[:2] * scale1
-                        K2[:2] = K2[:2] * scale2
-
                     kpts1, kpts2 = model.to_pixel_coordinates(sparse_matches, h1, w1, h2, w2)
                     kpts1, kpts2 = kpts1.cpu().numpy(), kpts2.cpu().numpy()
                     for _ in range(self.num_ransac_iter):
@@ -88,7 +75,7 @@ class Mega1500PoseLibBenchmark:
                         kpts1 = kpts1[shuffling]
                         kpts2 = kpts2[shuffling]
                         try:
-                            threshold = 1 
+                            threshold = .5#1 
                             camera1 = {'model': 'PINHOLE', 'width': w1, 'height': h1, 'params': K1[[0,1,0,1], [0,1,2,2]]}
                             camera2 = {'model': 'PINHOLE', 'width': w2, 'height': h2, 'params': K2[[0,1,0,1], [0,1,2,2]]}
                             relpose, res = poselib.estimate_relative_pose(
@@ -96,7 +83,7 @@ class Mega1500PoseLibBenchmark:
                                 kpts2,
                                 camera1,
                                 camera2,
-                                ransac_opt = {"max_reproj_error": 2, "max_epipolar_error": 1, "min_inliers": 8, "max_iterations": 10_000},
+                                ransac_opt = {"max_reproj_error": 2*threshold, "max_epipolar_error": threshold, "min_inliers": 8, "max_iterations": 10_000},
                             )
                             Rt_est  = relpose.Rt
                             R_est, t_est = Rt_est[:3,:3], Rt_est[:3,3:]

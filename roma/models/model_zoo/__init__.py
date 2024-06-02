@@ -1,14 +1,20 @@
 from typing import Union
 import torch
-from .roma_models import roma_model
+from .roma_models import roma_model, tiny_roma_v1_model
 
 weight_urls = {
     "roma": {
         "outdoor": "https://github.com/Parskatt/storage/releases/download/roma/roma_outdoor.pth",
         "indoor": "https://github.com/Parskatt/storage/releases/download/roma/roma_indoor.pth",
     },
+    "tiny_roma_v1": {
+        "outdoor": None,
+    },
     "dinov2": "https://dl.fbaipublicfiles.com/dinov2/dinov2_vitl14/dinov2_vitl14_pretrain.pth", #hopefully this doesnt change :D
 }
+
+def tiny_roma_v1_outdoor(device, weights = None):
+   return tiny_roma_v1_model(weights = weights).to(device) 
 
 def roma_outdoor(device, weights=None, dinov2_weights=None, coarse_res: Union[int,tuple[int,int]] = 560, upsample_res: Union[int,tuple[int,int]] = 864, amp_dtype: torch.dtype = torch.float16):
     if isinstance(coarse_res, int):

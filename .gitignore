@@ -6,3 +6,4 @@ workspace*
 jobs/*
 *ignore_me*
 *.pth
+wandb*
