@@ -63,7 +63,7 @@ class TinyRoMa(nn.Module):
             BasicLayer(fine_match_dim, fine_match_dim,), 
             nn.Conv2d(fine_match_dim, 3, kernel_size=1, bias=True, padding=0),)
         self.sample_mode = sample_mode
-        self.sample_thresh = 0.2
+        self.sample_thresh = 0.05
         self.symmetric = symmetric
         self.exact_softmax = exact_softmax
     

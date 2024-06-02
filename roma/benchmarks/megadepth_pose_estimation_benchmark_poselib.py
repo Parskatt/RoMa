@@ -75,7 +75,7 @@ class Mega1500PoseLibBenchmark:
                         kpts1 = kpts1[shuffling]
                         kpts2 = kpts2[shuffling]
                         try:
-                            threshold = .5#1 
+                            threshold = 1 
                             camera1 = {'model': 'PINHOLE', 'width': w1, 'height': h1, 'params': K1[[0,1,0,1], [0,1,2,2]]}
                             camera2 = {'model': 'PINHOLE', 'width': w2, 'height': h2, 'params': K2[[0,1,0,1], [0,1,2,2]]}
                             relpose, res = poselib.estimate_relative_pose(

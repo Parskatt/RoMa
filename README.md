@@ -48,7 +48,8 @@ F, mask = cv2.findFundamentalMat(
 )
 ```
 
-**New**: You can also match arbitrary keypoints with RoMa. A demo for this will be added soon.
+**New**: You can also match arbitrary keypoints with RoMa. See [match_keypoints](roma/models/matcher.py) in RegressionMatcher.
+
 ## Settings
 
 ### Resolution
@@ -79,6 +80,17 @@ DINOv2 has an Apache 2 license [DINOv2](https://github.com/facebookresearch/dino
 
 ## Acknowledgement
 Our codebase builds on the code in [DKM](https://github.com/Parskatt/DKM).
+
+## Tiny RoMa
+If you find that RoMa is too heavy, you might want to try Tiny RoMa which is built on top of XFeat.
+
+|  | AUC@5 | AUC@10 | AUC@20 |
+|----------|----------|----------|----------|
+| XFeat    |     |     |     |
+| XFeat*    |  51.9   | 67.2    | 78.9    |
+| Tiny RoMa v1    |     |     |     |
+| RoMa    |  -   | -    | -    |
+
 
 ## BibTeX
 If you find our models useful, please consider citing our paper!
