@@ -253,7 +253,9 @@ class TinyRoMa(nn.Module):
         good_matches, good_certainty = matches[good_samples], certainty[good_samples]
         if "balanced" not in self.sample_mode:
             return good_matches, good_certainty 
-        density = kde(good_matches, std=0.1, half = False, down = 8)
+        use_half = True if matches.device.type == "cuda" else False
+        down = 1 if matches.device.type == "cuda" else 8
+        density = kde(good_matches, std=0.1, half = use_half, down = down)
         p = 1 / (density+1)
         p[density < 10] = 1e-7 # Basically should have at least 10 perfect neighbours, or around 100 ok ones
         balanced_samples = torch.multinomial(p, 
