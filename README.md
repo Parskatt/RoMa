@@ -83,7 +83,10 @@ Our codebase builds on the code in [DKM](https://github.com/Parskatt/DKM).
 
 ## Tiny RoMa
 If you find that RoMa is too heavy, you might want to try Tiny RoMa which is built on top of XFeat.
-
+```python
+from roma import tiny_roma_v1_outdoor
+tiny_roma_model = tiny_roma_v1_outdoor(device=device)
+```
 Mega1500:
 |  | AUC@5 | AUC@10 | AUC@20 |
 |----------|----------|----------|----------|
@@ -100,12 +103,12 @@ Mega-8-Scenes (See DKM):
 | Tiny RoMa v1    | 57.7 | 70.5 | 79.6     |
 | RoMa    |  -   | -    | -    |
 
-IMC22:
+IMC22 :'):
 |  | mAA@10 |
 |----------|----------|
-| XFeat    | -    |
+| XFeat    | 42.1    |
 | XFeat*    |  -   |
-| Tiny RoMa v1    | - |
+| Tiny RoMa v1    | 42.2 |
 | RoMa    |  -   |
 
 ## BibTeX
