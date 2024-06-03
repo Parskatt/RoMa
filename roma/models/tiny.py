@@ -39,9 +39,7 @@ class TinyRoMa(nn.Module):
                  symmetric = False, 
                  exact_softmax = False):
         super().__init__()
-        if xfeat is None:
-            xfeat = torch.hub.load('verlab/accelerated_features', 'XFeat', pretrained = True, top_k = 4096).net
-            del xfeat.heatmap_head, xfeat.keypoint_head, xfeat.fine_matcher
+        del xfeat.heatmap_head, xfeat.keypoint_head, xfeat.fine_matcher
         if freeze_xfeat:
             xfeat.train(False)
             self.xfeat = [xfeat]# hide params from ddp
@@ -135,6 +133,7 @@ class TinyRoMa(nn.Module):
             P_lowres = torch.cat((cv[:,::down,::down].reshape(B,H1*W1 // down**2,H0,W0), best_match[:,None]),dim=1).softmax(dim=1)
             pos_embeddings = torch.einsum('bchw,cd->bdhw', P_lowres[:,:-1], grid_lr)
             pos_embeddings += P_lowres[:,-1] * grid[best_match].permute(0,3,1,2)
+            #print("hej")
         else:
             P = corr_volume.reshape(B,H1*W1,H0,W0).softmax(dim=1) # B, HW, H, W
             pos_embeddings = torch.einsum('bchw,cd->bdhw', P, grid)
@@ -236,8 +235,9 @@ class TinyRoMa(nn.Module):
         self,
         matches,
         certainty,
-        num=10000,
+        num=5_000,
     ):
+        H,W,_ = matches.shape
         if "threshold" in self.sample_mode:
             upper_thresh = self.sample_thresh
             certainty = certainty.clone()
@@ -248,18 +248,19 @@ class TinyRoMa(nn.Module):
         )
         expansion_factor = 4 if "balanced" in self.sample_mode else 1
         good_samples = torch.multinomial(certainty, 
-                          num_samples = min(expansion_factor*num, len(certainty)), 
-                          replacement=False)
+                        num_samples = min(expansion_factor*num, len(certainty)), 
+                        replacement=False)
         good_matches, good_certainty = matches[good_samples], certainty[good_samples]
         if "balanced" not in self.sample_mode:
-            return good_matches, good_certainty
-        density = kde(good_matches, std=0.1)
+            return good_matches, good_certainty 
+        density = kde(good_matches, std=0.1, half = False, down = 8)
         p = 1 / (density+1)
         p[density < 10] = 1e-7 # Basically should have at least 10 perfect neighbours, or around 100 ok ones
         balanced_samples = torch.multinomial(p, 
-                          num_samples = min(num,len(good_certainty)), 
-                          replacement=False)
+                        num_samples = min(num,len(good_certainty)), 
+                        replacement=False)
         return good_matches[balanced_samples], good_certainty[balanced_samples]
+        
             
     def forward(self, batch):
         """

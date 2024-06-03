@@ -6,8 +6,9 @@ from roma.models.transformer import Block, TransformerDecoder, MemEffAttention
 from roma.models.encoders import *
 from roma.models.tiny import TinyRoMa
 
-def tiny_roma_v1_model(weights = None, freeze_xfeat=False, exact_softmax=False):
+def tiny_roma_v1_model(weights = None, freeze_xfeat=False, exact_softmax=False, xfeat = None):
     model = TinyRoMa(
+        xfeat = xfeat,
         freeze_xfeat=freeze_xfeat, 
         exact_softmax=exact_softmax)
     if weights is not None:
