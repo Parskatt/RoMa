@@ -48,7 +48,8 @@ F, mask = cv2.findFundamentalMat(
 )
 ```
 
-**New**: You can also match arbitrary keypoints with RoMa. A demo for this will be added soon.
+**New**: You can also match arbitrary keypoints with RoMa. See [match_keypoints](roma/models/matcher.py) in RegressionMatcher.
+
 ## Settings
 
 ### Resolution
@@ -79,6 +80,36 @@ DINOv2 has an Apache 2 license [DINOv2](https://github.com/facebookresearch/dino
 
 ## Acknowledgement
 Our codebase builds on the code in [DKM](https://github.com/Parskatt/DKM).
+
+## Tiny RoMa
+If you find that RoMa is too heavy, you might want to try Tiny RoMa which is built on top of XFeat.
+```python
+from roma import tiny_roma_v1_outdoor
+tiny_roma_model = tiny_roma_v1_outdoor(device=device)
+```
+Mega1500:
+|  | AUC@5 | AUC@10 | AUC@20 |
+|----------|----------|----------|----------|
+| XFeat    | 46.4    | 58.9    | 69.2    |
+| XFeat*    |  51.9   | 67.2    | 78.9    |
+| Tiny RoMa v1    | 56.4 | 69.5 | 79.5     |
+| RoMa    |  -   | -    | -    |
+
+Mega-8-Scenes (See DKM):
+|  | AUC@5 | AUC@10 | AUC@20 |
+|----------|----------|----------|----------|
+| XFeat    | -    | -    | -    |
+| XFeat*    |  50.1   | 64.4    | 75.2    |
+| Tiny RoMa v1    | 57.7 | 70.5 | 79.6     |
+| RoMa    |  -   | -    | -    |
+
+IMC22 :'):
+|  | mAA@10 |
+|----------|----------|
+| XFeat    | 42.1    |
+| XFeat*    |  -   |
+| Tiny RoMa v1    | 42.2 |
+| RoMa    |  -   |
 
 ## BibTeX
 If you find our models useful, please consider citing our paper!

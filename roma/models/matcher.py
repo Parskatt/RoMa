@@ -525,15 +525,43 @@ class RegressionMatcher(nn.Module):
                                 scale_factor=scale_factor)
         return corresps
     
-    def to_pixel_coordinates(self, coords, H_A, W_A, H_B, W_B):
+    def conf_from_fb_consistency(self, flow_forward, flow_backward, th = 2):
+        # assumes that flow forward is of shape (..., H, W, 2)
+        has_batch = False
+        if len(flow_forward.shape) == 3:
+            flow_forward, flow_backward = flow_forward[None], flow_backward[None]
+        else:
+            has_batch = True
+        H,W = flow_forward.shape[-3:-1]
+        th_n = 2 * th / max(H,W)
+        coords = torch.stack(torch.meshgrid(
+            torch.linspace(-1 + 1 / W, 1 - 1 / W, W), 
+            torch.linspace(-1 + 1 / H, 1 - 1 / H, H), indexing = "xy"),
+                             dim = -1).to(flow_forward.device)
+        coords_fb = F.grid_sample(
+            flow_backward.permute(0, 3, 1, 2), 
+            flow_forward, 
+            align_corners=False, mode="bilinear").permute(0, 2, 3, 1)
+        diff = (coords - coords_fb).norm(dim=-1)
+        in_th = (diff < th_n).float()
+        if not has_batch:
+            in_th = in_th[0]
+        return in_th
+         
+    def to_pixel_coordinates(self, coords, H_A, W_A, H_B = None, W_B = None):
+        if coords.shape[-1] == 2:
+            return self._to_pixel_coordinates(coords, H_A, W_A) 
+        
         if isinstance(coords, (list, tuple)):
             kpts_A, kpts_B = coords[0], coords[1]
         else:
             kpts_A, kpts_B = coords[...,:2], coords[...,2:]
-        kpts_A = torch.stack((W_A/2 * (kpts_A[...,0]+1), H_A/2 * (kpts_A[...,1]+1)),axis=-1)
-        kpts_B = torch.stack((W_B/2 * (kpts_B[...,0]+1), H_B/2 * (kpts_B[...,1]+1)),axis=-1)
-        return kpts_A, kpts_B
-    
+        return self._to_pixel_coordinates(kpts_A, H_A, W_A), self._to_pixel_coordinates(kpts_B, H_B, W_B)
+
+    def _to_pixel_coordinates(self, coords, H, W):
+        kpts = torch.stack((W/2 * (coords[...,0]+1), H/2 * (coords[...,1]+1)),axis=-1)
+        return kpts
+ 
     def to_normalized_coordinates(self, coords, H_A, W_A, H_B, W_B):
         if isinstance(coords, (list, tuple)):
             kpts_A, kpts_B = coords[0], coords[1]
@@ -707,29 +735,38 @@ class RegressionMatcher(nn.Module):
                     certainty[0, 0],
                 )
                 
-    def visualize_warp(self, warp, certainty, im_A = None, im_B = None, im_A_path = None, im_B_path = None, device = "cuda", symmetric = True, save_path = None):
-        assert symmetric == True, "Currently assuming bidirectional warp, might update this if someone complains ;)"
+    def visualize_warp(self, warp, certainty, im_A = None, im_B = None, 
+                       im_A_path = None, im_B_path = None, device = "cuda", symmetric = True, save_path = None, unnormalize = False):
+        #assert symmetric == True, "Currently assuming bidirectional warp, might update this if someone complains ;)"
         H,W2,_ = warp.shape
         W = W2//2 if symmetric else W2
         if im_A is None:
             from PIL import Image
             im_A, im_B = Image.open(im_A_path).convert("RGB"), Image.open(im_B_path).convert("RGB")
-        im_A = im_A.resize((W,H))
-        im_B = im_B.resize((W,H))
-            
-        x_A = (torch.tensor(np.array(im_A)) / 255).to(device).permute(2, 0, 1)
-        x_B = (torch.tensor(np.array(im_B)) / 255).to(device).permute(2, 0, 1)
-
+        if not isinstance(im_A, torch.Tensor):
+            im_A = im_A.resize((W,H))
+            im_B = im_B.resize((W,H))    
+            x_B = (torch.tensor(np.array(im_B)) / 255).to(device).permute(2, 0, 1)
+            if symmetric:
+                x_A = (torch.tensor(np.array(im_A)) / 255).to(device).permute(2, 0, 1)
+        else:
+            if symmetric:
+                x_A = im_A
+            x_B = im_B
         im_A_transfer_rgb = F.grid_sample(
         x_B[None], warp[:,:W, 2:][None], mode="bilinear", align_corners=False
         )[0]
-        im_B_transfer_rgb = F.grid_sample(
-        x_A[None], warp[:, W:, :2][None], mode="bilinear", align_corners=False
-        )[0]
-        warp_im = torch.cat((im_A_transfer_rgb,im_B_transfer_rgb),dim=2)
-        white_im = torch.ones((H,2*W),device=device)
+        if symmetric:
+            im_B_transfer_rgb = F.grid_sample(
+            x_A[None], warp[:, W:, :2][None], mode="bilinear", align_corners=False
+            )[0]
+            warp_im = torch.cat((im_A_transfer_rgb,im_B_transfer_rgb),dim=2)
+            white_im = torch.ones((H,2*W),device=device)
+        else:
+            warp_im = im_A_transfer_rgb
+            white_im = torch.ones((H, W), device = device)
         vis_im = certainty * warp_im + (1 - certainty) * white_im
         if save_path is not None:
             from roma.utils import tensor_to_pil
-            tensor_to_pil(vis_im, unnormalize=False).save(save_path)
+            tensor_to_pil(vis_im, unnormalize=unnormalize).save(save_path)
         return vis_im

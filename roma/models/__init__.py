@@ -1,1 +1,1 @@
-from .model_zoo import roma_outdoor, roma_indoor
+from .model_zoo import roma_outdoor, tiny_roma_v1_outdoor, roma_indoor

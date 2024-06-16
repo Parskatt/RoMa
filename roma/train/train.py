@@ -38,9 +38,9 @@ def train_step(train_batch, model, objective, optimizer, grad_scaler, grad_clip_
 
 
 def train_k_steps(
-    n_0, k, dataloader, model, objective, optimizer, lr_scheduler, grad_scaler, progress_bar=True, grad_clip_norm = 1., warmup = None, ema_model = None,
+    n_0, k, dataloader, model, objective, optimizer, lr_scheduler, grad_scaler, progress_bar=True, grad_clip_norm = 1., warmup = None, ema_model = None, pbar_n_seconds = 1,
 ):
-    for n in tqdm(range(n_0, n_0 + k), disable=(not progress_bar) or roma.RANK > 0):
+    for n in tqdm(range(n_0, n_0 + k), disable=(not progress_bar) or roma.RANK > 0, mininterval=pbar_n_seconds):
         batch = next(dataloader)
         model.train(True)
         batch = to_cuda(batch)

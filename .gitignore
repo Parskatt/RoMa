@@ -5,3 +5,7 @@ vis*
 workspace*
 .venv
 .DS_Store
+jobs/*
+*ignore_me*
+*.pth
+wandb*

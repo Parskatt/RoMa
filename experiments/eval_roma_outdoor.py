@@ -11,6 +11,7 @@ import wandb
 
 from roma.benchmarks import MegadepthDenseBenchmark
 from roma.benchmarks import MegaDepthPoseEstimationBenchmark, MegadepthDenseBenchmark, HpatchesHomogBenchmark
+from roma.benchmarks import Mega1500PoseLibBenchmark
 
 def test_mega_8_scenes(model, name):
     mega_8_scenes_benchmark = MegaDepthPoseEstimationBenchmark("data/megadepth",
@@ -39,6 +40,11 @@ def test_mega1500(model, name):
     mega1500_results = mega1500_benchmark.benchmark(model, model_name=name)
     json.dump(mega1500_results, open(f"results/mega1500_{name}.json", "w"))
 
+def test_mega1500_poselib(model, name):
+    mega1500_benchmark = Mega1500PoseLibBenchmark("data/megadepth")
+    mega1500_results = mega1500_benchmark.benchmark(model, model_name=name)
+    json.dump(mega1500_results, open(f"results/mega1500_{name}.json", "w"))
+
 def test_mega_dense(model, name):
     megadense_benchmark = MegadepthDenseBenchmark("data/megadepth", num_samples = 1000)
     megadense_results = megadense_benchmark.benchmark(model)
@@ -54,4 +60,6 @@ if __name__ == "__main__":
     from roma import roma_outdoor
     model = roma_outdoor(device = "cuda", coarse_res = 672, upsample_res = 1344)
     experiment_name = "roma_latest"
-    test_mega1500(model, experiment_name)
+    #test_mega1500(model, experiment_name)
+    test_mega1500_poselib(model, experiment_name)
+    

@@ -49,10 +49,10 @@ class RobustLosses(nn.Module):
             G = torch.stack((G[1], G[0]), dim = -1).reshape(C,2)
             GT = (G[None,:,None,None,:]-x2[:,None]).norm(dim=-1).min(dim=1).indices
         cls_loss = F.cross_entropy(scale_gm_cls, GT, reduction  = 'none')[prob > 0.99]
+        certainty_loss = F.binary_cross_entropy_with_logits(gm_certainty[:,0], prob)
         if not torch.any(cls_loss):
             cls_loss = (certainty_loss * 0.0)  # Prevent issues where prob is 0 everywhere
-
-        certainty_loss = F.binary_cross_entropy_with_logits(gm_certainty[:,0], prob)
+            
         losses = {
             f"gm_certainty_loss_{scale}": certainty_loss.mean(),
             f"gm_cls_loss_{scale}": cls_loss.mean(),
@@ -86,7 +86,7 @@ class RobustLosses(nn.Module):
             wandb.log({"train_pck_05": pck_05}, step = roma.GLOBAL_STEP)
 
         ce_loss = F.binary_cross_entropy_with_logits(certainty[:, 0], prob)
-        a = self.alpha
+        a = self.alpha[scale] if isinstance(self.alpha, dict) else self.alpha
         cs = self.c * scale
         x = epe[prob > 0.99]
         reg_loss = cs**a * ((x/(cs))**2 + 1**2)**(a/2)
@@ -108,7 +108,7 @@ class RobustLosses(nn.Module):
             scale_corresps = corresps[scale]
             scale_certainty, flow_pre_delta, delta_cls, offset_scale, scale_gm_cls, scale_gm_certainty, flow, scale_gm_flow = (
                 scale_corresps["certainty"],
-                scale_corresps["flow_pre_delta"],
+                scale_corresps.get("flow_pre_delta"),
                 scale_corresps.get("delta_cls"),
                 scale_corresps.get("offset_scale"),
                 scale_corresps.get("gm_cls"),
@@ -117,8 +117,12 @@ class RobustLosses(nn.Module):
                 scale_corresps.get("gm_flow"),
 
             )
-            flow_pre_delta = rearrange(flow_pre_delta, "b d h w -> b h w d")
-            b, h, w, d = flow_pre_delta.shape
+            if flow_pre_delta is not None:
+                flow_pre_delta = rearrange(flow_pre_delta, "b d h w -> b h w d")
+                b, h, w, d = flow_pre_delta.shape
+            else:
+                # _ = 1
+                b, _, h, w = scale_certainty.shape
             gt_warp, gt_prob = get_gt_warp(                
             batch["im_A_depth"],
             batch["im_B_depth"],

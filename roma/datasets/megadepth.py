@@ -212,6 +212,8 @@ class MegadepthBuilder:
                 continue
             if self.imc21_ignore and scene_name in self.imc21_scenes:
                 continue
+            if ".npy" not in scene_name:
+                continue
             scene_info = np.load(
                 os.path.join(self.scene_info_root, scene_name), allow_pickle=True
             ).item()
