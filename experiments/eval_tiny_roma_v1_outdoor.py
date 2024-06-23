@@ -13,9 +13,9 @@ from torch.utils.data import ConcatDataset
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 import json
-from roma.benchmarks import ScanNetBenchmark
-from roma.benchmarks import Mega1500PoseLibBenchmark, ScanNetPoselibBenchmark
-from roma.benchmarks import MegaDepthPoseEstimationBenchmark
+from romatch.benchmarks import ScanNetBenchmark
+from romatch.benchmarks import Mega1500PoseLibBenchmark, ScanNetPoselibBenchmark
+from romatch.benchmarks import MegaDepthPoseEstimationBenchmark
 
 def test_mega_8_scenes(model, name):
     mega_8_scenes_benchmark = MegaDepthPoseEstimationBenchmark("data/megadepth",
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     os.environ["TORCH_CUDNN_V8_API_ENABLED"] = "1" # For BF16 computations
     os.environ["OMP_NUM_THREADS"] = "16"
     torch.backends.cudnn.allow_tf32 = True # allow tf32 on cudnn
-    from roma import tiny_roma_v1_outdoor
+    from romatch import tiny_roma_v1_outdoor
 
     experiment_name = Path(__file__).stem
     device = 'cuda'

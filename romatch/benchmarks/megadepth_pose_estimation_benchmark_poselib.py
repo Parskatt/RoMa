@@ -1,10 +1,10 @@
 import numpy as np
 import torch
-from roma.utils import *
+from romatch.utils import *
 from PIL import Image
 from tqdm import tqdm
 import torch.nn.functional as F
-import roma
+import romatch
 import kornia.geometry.epipolar as kepi
 
 # wrap cause pyposelib is still in dev

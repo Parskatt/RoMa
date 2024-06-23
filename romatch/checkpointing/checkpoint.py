@@ -5,7 +5,7 @@ from torch.nn.parallel.distributed import DistributedDataParallel
 from loguru import logger
 import gc
 
-import roma
+import romatch
 
 class CheckPoint:
     def __init__(self, dir=None, name="tmp"):
@@ -20,7 +20,7 @@ class CheckPoint:
         lr_scheduler,
         n,
         ):
-        if roma.RANK == 0:
+        if romatch.RANK == 0:
             assert model is not None
             if isinstance(model, (DataParallel, DistributedDataParallel)):
                 model = model.module
@@ -40,7 +40,7 @@ class CheckPoint:
         lr_scheduler,
         n,
         ):
-        if os.path.exists(self.dir + self.name + f"_latest.pth") and roma.RANK == 0:
+        if os.path.exists(self.dir + self.name + f"_latest.pth") and romatch.RANK == 0:
             states = torch.load(self.dir + self.name + f"_latest.pth")
             if "model" in states:
                 model.load_state_dict(states["model"])

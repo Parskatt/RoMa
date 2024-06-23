@@ -34,7 +34,7 @@ pip install -e .
 We provide two demos in the [demos folder](demo).
 Here's the gist of it:
 ```python
-from roma import roma_outdoor
+from romatch import roma_outdoor
 roma_model = roma_outdoor(device=device)
 # Match
 warp, certainty = roma_model.match(imA_path, imB_path, device=device)
@@ -48,7 +48,7 @@ F, mask = cv2.findFundamentalMat(
 )
 ```
 
-**New**: You can also match arbitrary keypoints with RoMa. See [match_keypoints](roma/models/matcher.py) in RegressionMatcher.
+**New**: You can also match arbitrary keypoints with RoMa. See [match_keypoints](romatch/models/matcher.py) in RegressionMatcher.
 
 ## Settings
 
@@ -84,7 +84,7 @@ Our codebase builds on the code in [DKM](https://github.com/Parskatt/DKM).
 ## Tiny RoMa
 If you find that RoMa is too heavy, you might want to try Tiny RoMa which is built on top of XFeat.
 ```python
-from roma import tiny_roma_v1_outdoor
+from romatch import tiny_roma_v1_outdoor
 tiny_roma_model = tiny_roma_v1_outdoor(device=device)
 ```
 Mega1500:

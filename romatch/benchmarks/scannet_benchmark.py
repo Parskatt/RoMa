@@ -1,7 +1,7 @@
 import os.path as osp
 import numpy as np
 import torch
-from roma.utils import *
+from romatch.utils import *
 from PIL import Image
 from tqdm import tqdm
 
