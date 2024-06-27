@@ -1,6 +1,6 @@
 from tqdm import tqdm
-from roma.utils.utils import to_cuda
-import roma
+from romatch.utils.utils import to_cuda
+import romatch
 import torch
 import wandb
 
@@ -17,8 +17,8 @@ def log_param_statistics(named_parameters, norm_type = 2):
     total_grad_norm = torch.norm(grad_norms, norm_type)
     if torch.any(nans_or_infs):
         print(f"These params have nan or inf grads: {nan_inf_names}")
-    wandb.log({"grad_norm": total_grad_norm.item()}, step = roma.GLOBAL_STEP)
-    wandb.log({"param_norm": param_norm.item()}, step = roma.GLOBAL_STEP)
+    wandb.log({"grad_norm": total_grad_norm.item()}, step = romatch.GLOBAL_STEP)
+    wandb.log({"param_norm": param_norm.item()}, step = romatch.GLOBAL_STEP)
 
 def train_step(train_batch, model, objective, optimizer, grad_scaler, grad_clip_norm = 1.,**kwargs):
     optimizer.zero_grad()
@@ -30,17 +30,17 @@ def train_step(train_batch, model, objective, optimizer, grad_scaler, grad_clip_
     torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip_norm) # what should max norm be?
     grad_scaler.step(optimizer)
     grad_scaler.update()
-    wandb.log({"grad_scale": grad_scaler._scale.item()}, step = roma.GLOBAL_STEP)
+    wandb.log({"grad_scale": grad_scaler._scale.item()}, step = romatch.GLOBAL_STEP)
     if grad_scaler._scale < 1.:
         grad_scaler._scale = torch.tensor(1.).to(grad_scaler._scale)
-    roma.GLOBAL_STEP = roma.GLOBAL_STEP + roma.STEP_SIZE # increment global step
+    romatch.GLOBAL_STEP = romatch.GLOBAL_STEP + romatch.STEP_SIZE # increment global step
     return {"train_out": out, "train_loss": l.item()}
 
 
 def train_k_steps(
     n_0, k, dataloader, model, objective, optimizer, lr_scheduler, grad_scaler, progress_bar=True, grad_clip_norm = 1., warmup = None, ema_model = None, pbar_n_seconds = 1,
 ):
-    for n in tqdm(range(n_0, n_0 + k), disable=(not progress_bar) or roma.RANK > 0, mininterval=pbar_n_seconds):
+    for n in tqdm(range(n_0, n_0 + k), disable=(not progress_bar) or romatch.RANK > 0, mininterval=pbar_n_seconds):
         batch = next(dataloader)
         model.train(True)
         batch = to_cuda(batch)

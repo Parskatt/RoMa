@@ -2,12 +2,12 @@ from einops.einops import rearrange
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from roma.utils.utils import get_gt_warp
+from romatch.utils.utils import get_gt_warp
 import wandb
-import roma
+import romatch
 import math
 
-# This is slightly different than regular roma due to significantly worse corresps
+# This is slightly different than regular romatch due to significantly worse corresps
 # The confidence loss is quite tricky here //Johan
 
 class RobustLosses(nn.Module):
@@ -57,7 +57,7 @@ class RobustLosses(nn.Module):
         losses = {
             f"gm_corr_volume_loss_{scale}": corr_volume_loss.mean(),
         }
-        wandb.log(losses, step = roma.GLOBAL_STEP)
+        wandb.log(losses, step = romatch.GLOBAL_STEP)
         return losses
 
     
@@ -68,7 +68,7 @@ class RobustLosses(nn.Module):
             prob = prob * (epe < (2 / 512) * (self.local_dist[scale] * scale)).float()
         if scale == 1:
             pck_05 = (epe[prob > 0.99] < 0.5 * (2/512)).float().mean()
-            wandb.log({"train_pck_05": pck_05}, step = roma.GLOBAL_STEP)
+            wandb.log({"train_pck_05": pck_05}, step = romatch.GLOBAL_STEP)
         if self.epe_mask_prob_th is not None:
             # if too far away from gt, certainty should be 0
             gt_cert = prob * (epe < scale * self.epe_mask_prob_th)
@@ -88,7 +88,7 @@ class RobustLosses(nn.Module):
             f"{mode}_certainty_loss_{scale}": ce_loss.mean(),
             f"{mode}_regression_loss_{scale}": reg_loss.mean(),
         }
-        wandb.log(losses, step = roma.GLOBAL_STEP)
+        wandb.log(losses, step = romatch.GLOBAL_STEP)
         return losses
 
     def forward(self, corresps, batch):

@@ -10,7 +10,7 @@ import numpy as np
 from torch import nn
 from PIL import Image
 from torchvision.transforms import ToTensor
-from roma.utils.kde import kde
+from romatch.utils.kde import kde
 
 class BasicLayer(nn.Module):
     """
@@ -171,7 +171,7 @@ class TinyRoMa(nn.Module):
             white_im = torch.ones((H, W), device = device)
         vis_im = certainty * warp_im + (1 - certainty) * white_im
         if save_path is not None:
-            from roma.utils import tensor_to_pil
+            from romatch.utils import tensor_to_pil
             tensor_to_pil(vis_im, unnormalize=unnormalize).save(save_path)
         return vis_im
      

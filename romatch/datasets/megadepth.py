@@ -5,9 +5,9 @@ import numpy as np
 import torch
 import torchvision.transforms.functional as tvf
 import kornia.augmentation as K
-from roma.utils import get_depth_tuple_transform_ops, get_tuple_transform_ops
-import roma
-from roma.utils import *
+from romatch.utils import get_depth_tuple_transform_ops, get_tuple_transform_ops
+import romatch
+from romatch.utils import *
 import math
 
 class MegadepthScene:
@@ -53,7 +53,7 @@ class MegadepthScene:
             area = ht * wt
             s = int(16 * (math.sqrt(area)//16))
             sizes = ((ht,wt), (s,s), (wt,ht))
-            choice = roma.RANK % 3
+            choice = romatch.RANK % 3
             ht, wt = sizes[choice] 
         # counts, bins = np.histogram(self.overlaps,20)
         # print(counts)
@@ -157,7 +157,7 @@ class MegadepthScene:
             if np.random.rand() > 0.5:
                 im_B, depth_B, K2 = self.single_horizontal_flip(im_B, depth_B, K2)
         
-        if roma.DEBUG_MODE:
+        if romatch.DEBUG_MODE:
             tensor_to_pil(im_A[0], unnormalize=True).save(
                             f"vis/im_A.jpg")
             tensor_to_pil(im_B[0], unnormalize=True).save(

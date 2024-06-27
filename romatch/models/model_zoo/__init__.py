@@ -3,12 +3,12 @@ import torch
 from .roma_models import roma_model, tiny_roma_v1_model
 
 weight_urls = {
-    "roma": {
-        "outdoor": "https://github.com/Parskatt/storage/releases/download/roma/roma_outdoor.pth",
-        "indoor": "https://github.com/Parskatt/storage/releases/download/roma/roma_indoor.pth",
+    "romatch": {
+        "outdoor": "https://github.com/Parskatt/storage/releases/download/romatch/roma_outdoor.pth",
+        "indoor": "https://github.com/Parskatt/storage/releases/download/romatch/roma_indoor.pth",
     },
     "tiny_roma_v1": {
-        "outdoor": "https://github.com/Parskatt/storage/releases/download/roma/tiny_roma_v1_outdoor.pth",
+        "outdoor": "https://github.com/Parskatt/storage/releases/download/romatch/tiny_roma_v1_outdoor.pth",
     },
     "dinov2": "https://dl.fbaipublicfiles.com/dinov2/dinov2_vitl14/dinov2_vitl14_pretrain.pth", #hopefully this doesnt change :D
 }
@@ -37,7 +37,7 @@ def roma_outdoor(device, weights=None, dinov2_weights=None, coarse_res: Union[in
     assert coarse_res[1] % 14 == 0, "Needs to be multiple of 14 for backbone"
     
     if weights is None:
-        weights = torch.hub.load_state_dict_from_url(weight_urls["roma"]["outdoor"],
+        weights = torch.hub.load_state_dict_from_url(weight_urls["romatch"]["outdoor"],
                                                      map_location=device)
     if dinov2_weights is None:
         dinov2_weights = torch.hub.load_state_dict_from_url(weight_urls["dinov2"],
@@ -58,7 +58,7 @@ def roma_indoor(device, weights=None, dinov2_weights=None, coarse_res: Union[int
     assert coarse_res[1] % 14 == 0, "Needs to be multiple of 14 for backbone"
     
     if weights is None:
-        weights = torch.hub.load_state_dict_from_url(weight_urls["roma"]["indoor"],
+        weights = torch.hub.load_state_dict_from_url(weight_urls["romatch"]["indoor"],
                                                      map_location=device)
     if dinov2_weights is None:
         dinov2_weights = torch.hub.load_state_dict_from_url(weight_urls["dinov2"],

@@ -1,10 +1,10 @@
 import torch
 import numpy as np
 import tqdm
-from roma.datasets import MegadepthBuilder
-from roma.utils import warp_kpts
+from romatch.datasets import MegadepthBuilder
+from romatch.utils import warp_kpts
 from torch.utils.data import ConcatDataset
-import roma
+import romatch
 
 class MegadepthDenseBenchmark:
     def __init__(self, data_root="data/megadepth", h = 384, w = 512, num_samples = 2000) -> None:
@@ -55,7 +55,7 @@ class MegadepthDenseBenchmark:
             dataloader = torch.utils.data.DataLoader(
                 self.dataset, batch_size=B, num_workers=batch_size, sampler=sampler
             )
-            for idx, data in tqdm.tqdm(enumerate(dataloader), disable = roma.RANK > 0):
+            for idx, data in tqdm.tqdm(enumerate(dataloader), disable = romatch.RANK > 0):
                 im_A, im_B, depth1, depth2, T_1to2, K1, K2 = (
                     data["im_A"].cuda(),
                     data["im_B"].cuda(),
@@ -69,8 +69,8 @@ class MegadepthDenseBenchmark:
                 gd, pck_1, pck_3, pck_5, prob = self.geometric_dist(
                     depth1, depth2, T_1to2, K1, K2, matches
                 )
-                if roma.DEBUG_MODE:
-                    from roma.utils.utils import tensor_to_pil
+                if romatch.DEBUG_MODE:
+                    from romatch.utils.utils import tensor_to_pil
                     import torch.nn.functional as F
                     path = "vis"
                     H, W = model.get_output_resolution()

@@ -14,9 +14,9 @@ import torchvision.transforms.functional as tvf
 import kornia.augmentation as K
 import os.path as osp
 import matplotlib.pyplot as plt
-import roma
-from roma.utils import get_depth_tuple_transform_ops, get_tuple_transform_ops
-from roma.utils.transforms import GeometricSequential
+import romatch
+from romatch.utils import get_depth_tuple_transform_ops, get_tuple_transform_ops
+from romatch.utils.transforms import GeometricSequential
 from tqdm import tqdm
 
 class ScanNetScene:
@@ -147,7 +147,7 @@ class ScanNetBuilder:
         # Note: split doesn't matter here as we always use same scannet_train scenes
         scene_names = self.all_scenes
         scenes = []
-        for scene_name in tqdm(scene_names, disable = roma.RANK > 0):
+        for scene_name in tqdm(scene_names, disable = romatch.RANK > 0):
             scene_info = np.load(os.path.join(self.scene_info_root,scene_name), allow_pickle=True)
             scenes.append(ScanNetScene(self.data_root, scene_info, min_overlap=min_overlap, **kwargs))
         return scenes

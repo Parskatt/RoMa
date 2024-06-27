@@ -1,7 +1,7 @@
 from PIL import Image
 import torch
 import cv2
-from roma import roma_outdoor
+from romatch import roma_outdoor
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

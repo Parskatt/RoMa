@@ -2,9 +2,9 @@ from einops.einops import rearrange
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from roma.utils.utils import get_gt_warp
+from romatch.utils.utils import get_gt_warp
 import wandb
-import roma
+import romatch
 import math
 
 class RobustLosses(nn.Module):
@@ -57,7 +57,7 @@ class RobustLosses(nn.Module):
             f"gm_certainty_loss_{scale}": certainty_loss.mean(),
             f"gm_cls_loss_{scale}": cls_loss.mean(),
         }
-        wandb.log(losses, step = roma.GLOBAL_STEP)
+        wandb.log(losses, step = romatch.GLOBAL_STEP)
         return losses
 
     def delta_cls_loss(self, x2, prob, flow_pre_delta, delta_cls, certainty, scale, offset_scale):
@@ -76,14 +76,14 @@ class RobustLosses(nn.Module):
             f"delta_certainty_loss_{scale}": certainty_loss.mean(),
             f"delta_cls_loss_{scale}": cls_loss.mean(),
         }
-        wandb.log(losses, step = roma.GLOBAL_STEP)
+        wandb.log(losses, step = romatch.GLOBAL_STEP)
         return losses
 
     def regression_loss(self, x2, prob, flow, certainty, scale, eps=1e-8, mode = "delta"):
         epe = (flow.permute(0,2,3,1) - x2).norm(dim=-1)
         if scale == 1:
             pck_05 = (epe[prob > 0.99] < 0.5 * (2/512)).float().mean()
-            wandb.log({"train_pck_05": pck_05}, step = roma.GLOBAL_STEP)
+            wandb.log({"train_pck_05": pck_05}, step = romatch.GLOBAL_STEP)
 
         ce_loss = F.binary_cross_entropy_with_logits(certainty[:, 0], prob)
         a = self.alpha[scale] if isinstance(self.alpha, dict) else self.alpha
@@ -96,7 +96,7 @@ class RobustLosses(nn.Module):
             f"{mode}_certainty_loss_{scale}": ce_loss.mean(),
             f"{mode}_regression_loss_{scale}": reg_loss.mean(),
         }
-        wandb.log(losses, step = roma.GLOBAL_STEP)
+        wandb.log(losses, step = romatch.GLOBAL_STEP)
         return losses
 
     def forward(self, corresps, batch):

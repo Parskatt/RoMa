@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 from tqdm import tqdm
-from roma.utils import pose_auc
+from romatch.utils import pose_auc
 import cv2
 
 

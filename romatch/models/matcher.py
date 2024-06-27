@@ -9,11 +9,11 @@ import warnings
 from warnings import warn
 from PIL import Image
 
-import roma
-from roma.utils import get_tuple_transform_ops
-from roma.utils.local_correlation import local_correlation
-from roma.utils.utils import cls_to_flow_refine
-from roma.utils.kde import kde
+import romatch
+from romatch.utils import get_tuple_transform_ops
+from romatch.utils.local_correlation import local_correlation
+from romatch.utils.utils import cls_to_flow_refine
+from romatch.utils.kde import kde
 from typing import Union
 
 class ConvRefiner(nn.Module):
@@ -767,6 +767,6 @@ class RegressionMatcher(nn.Module):
             white_im = torch.ones((H, W), device = device)
         vis_im = certainty * warp_im + (1 - certainty) * white_im
         if save_path is not None:
-            from roma.utils import tensor_to_pil
+            from romatch.utils import tensor_to_pil
             tensor_to_pil(vis_im, unnormalize=unnormalize).save(save_path)
         return vis_im
