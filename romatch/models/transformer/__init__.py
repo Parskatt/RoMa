@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from romatch.utils.utils import get_grid
+from romatch.utils.utils import get_grid, get_autocast_params
 from .layers.block import Block
 from .layers.attention import MemEffAttention
 from .dinov2 import vit_large
@@ -28,7 +28,8 @@ class TransformerDecoder(nn.Module):
         return self._scales.copy()
 
     def forward(self, gp_posterior, features, old_stuff, new_scale):
-        with torch.autocast("cuda", dtype=self.amp_dtype, enabled=self.amp):
+        autocast_device, autocast_enabled, autocast_dtype = get_autocast_params(gp_posterior.device, enabled=self.amp, dtype=self.amp_dtype)
+        with torch.autocast(autocast_device, enabled=autocast_enabled, dtype = autocast_dtype):
             B,C,H,W = gp_posterior.shape
             x = torch.cat((gp_posterior, features), dim = 1)
             B,C,H,W = x.shape

@@ -491,7 +491,7 @@ if __name__ == "__main__":
         train(args)
 
     experiment_name = "tiny_roma_v1_outdoor"#Path(__file__).stem
-    device = 'cuda'
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = XFeatModel(freeze_xfeat=False, exact_softmax=False).to(device)
     model.load_state_dict(torch.load(f"{experiment_name}.pth"))
     test_mega1500_poselib(model, experiment_name)
