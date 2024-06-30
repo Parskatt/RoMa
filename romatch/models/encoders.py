@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as tvm
 import gc
+from romatch.utils.utils import get_autocast_params
 
 
 class ResNet50(nn.Module):
@@ -28,7 +29,8 @@ class ResNet50(nn.Module):
         self.amp_dtype = amp_dtype
 
     def forward(self, x, **kwargs):
-        with torch.autocast("cuda", enabled=self.amp, dtype = self.amp_dtype):
+        autocast_device, autocast_enabled, autocast_dtype = get_autocast_params(x.device, self.amp, self.amp_dtype)
+        with torch.autocast(autocast_device, enabled=autocast_enabled, dtype = autocast_dtype):
             net = self.net
             feats = {1:x}
             x = net.conv1(x)
@@ -64,7 +66,8 @@ class VGG19(nn.Module):
         self.amp_dtype = amp_dtype
 
     def forward(self, x, **kwargs):
-        with torch.autocast("cuda", enabled=self.amp, dtype = self.amp_dtype):
+        autocast_device, autocast_enabled, autocast_dtype = get_autocast_params(x.device, self.amp, self.amp_dtype)
+        with torch.autocast(device_type=autocast_device, enabled=autocast_enabled, dtype = autocast_dtype):
             feats = {}
             scale = 1
             for layer in self.layers:

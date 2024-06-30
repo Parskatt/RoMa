@@ -4,11 +4,11 @@ from .roma_models import roma_model, tiny_roma_v1_model
 
 weight_urls = {
     "romatch": {
-        "outdoor": "https://github.com/Parskatt/storage/releases/download/romatch/roma_outdoor.pth",
-        "indoor": "https://github.com/Parskatt/storage/releases/download/romatch/roma_indoor.pth",
+        "outdoor": "https://github.com/Parskatt/storage/releases/download/roma/roma_outdoor.pth",
+        "indoor": "https://github.com/Parskatt/storage/releases/download/roma/roma_indoor.pth",
     },
     "tiny_roma_v1": {
-        "outdoor": "https://github.com/Parskatt/storage/releases/download/romatch/tiny_roma_v1_outdoor.pth",
+        "outdoor": "https://github.com/Parskatt/storage/releases/download/roma/tiny_roma_v1_outdoor.pth",
     },
     "dinov2": "https://dl.fbaipublicfiles.com/dinov2/dinov2_vitl14/dinov2_vitl14_pretrain.pth", #hopefully this doesnt change :D
 }
@@ -32,6 +32,9 @@ def roma_outdoor(device, weights=None, dinov2_weights=None, coarse_res: Union[in
         coarse_res = (coarse_res, coarse_res)
     if isinstance(upsample_res, int):    
         upsample_res = (upsample_res, upsample_res)
+
+    if str(device) == 'cpu':
+        amp_dtype = torch.float32
 
     assert coarse_res[0] % 14 == 0, "Needs to be multiple of 14 for backbone"
     assert coarse_res[1] % 14 == 0, "Needs to be multiple of 14 for backbone"

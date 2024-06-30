@@ -623,3 +623,16 @@ def get_grid(b, h, w, device):
     )
     grid = torch.stack((grid[2], grid[1]), dim=-1).reshape(b, h, w, 2)
     return grid
+
+
+def get_autocast_params(device=None, enabled=False, dtype=None):
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    if 'cuda' in str(device):
+        out_dtype = dtype
+        enabled = True
+    else:
+        out_dtype = torch.bfloat16
+        enabled = False
+    return str(device), enabled, out_dtype

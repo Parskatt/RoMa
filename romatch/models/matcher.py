@@ -12,7 +12,7 @@ from PIL import Image
 import romatch
 from romatch.utils import get_tuple_transform_ops
 from romatch.utils.local_correlation import local_correlation
-from romatch.utils.utils import cls_to_flow_refine
+from romatch.utils.utils import cls_to_flow_refine, get_autocast_params
 from romatch.utils.kde import kde
 from typing import Union
 
@@ -106,9 +106,9 @@ class ConvRefiner(nn.Module):
         
     def forward(self, x, y, flow, scale_factor = 1, logits = None):
         b,c,hs,ws = x.shape
-        with torch.autocast("cuda", enabled=self.amp, dtype = self.amp_dtype):
-            with torch.no_grad():
-                x_hat = F.grid_sample(y, flow.permute(0, 2, 3, 1), align_corners=False, mode = self.sample_mode)
+        autocast_device, autocast_enabled, autocast_dtype = get_autocast_params(x.device, enabled=self.amp, dtype=self.amp_dtype)
+        with torch.autocast(autocast_device, enabled=autocast_enabled, dtype = autocast_dtype):            
+            x_hat = F.grid_sample(y, flow.permute(0, 2, 3, 1), align_corners=False, mode = self.sample_mode)
             if self.has_displacement_emb:
                 im_A_coords = torch.meshgrid(
                 (
@@ -363,7 +363,8 @@ class Decoder(nn.Module):
             corresps[ins] = {}
             f1_s, f2_s = f1[ins], f2[ins]
             if new_scale in self.proj:
-                with torch.autocast("cuda", dtype = self.amp_dtype):
+                autocast_device, autocast_enabled, autocast_dtype = get_autocast_params(f1_s.device, str(f1_s)=='cuda', self.amp_dtype)
+                with torch.autocast(autocast_device, enabled=autocast_enabled, dtype = autocast_dtype):
                     f1_s, f2_s = self.proj[new_scale](f1_s), self.proj[new_scale](f2_s)
 
             if ins in coarse_scales:
