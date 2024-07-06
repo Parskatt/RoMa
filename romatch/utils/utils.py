@@ -286,7 +286,10 @@ def cls_to_flow(cls, deterministic_sampling = True):
     B,C,H,W = cls.shape
     device = cls.device
     res = round(math.sqrt(C))
-    G = torch.meshgrid(*[torch.linspace(-1+1/res, 1-1/res, steps = res, device = device) for _ in range(2)])
+    G = torch.meshgrid(
+        *[torch.linspace(-1+1/res, 1-1/res, steps = res, device = device) for _ in range(2)],
+        indexing = 'ij'
+        )
     G = torch.stack([G[1],G[0]],dim=-1).reshape(C,2)
     if deterministic_sampling:
         sampled_cls = cls.max(dim=1).indices
@@ -300,7 +303,10 @@ def cls_to_flow_refine(cls):
     B,C,H,W = cls.shape
     device = cls.device
     res = round(math.sqrt(C))
-    G = torch.meshgrid(*[torch.linspace(-1+1/res, 1-1/res, steps = res, device = device) for _ in range(2)])
+    G = torch.meshgrid(
+        *[torch.linspace(-1+1/res, 1-1/res, steps = res, device = device) for _ in range(2)],
+        indexing = 'ij'
+        )
     G = torch.stack([G[1],G[0]],dim=-1).reshape(C,2)
     cls = cls.softmax(dim=1)
     mode = cls.max(dim=1).indices
@@ -326,7 +332,8 @@ def get_gt_warp(depth1, depth2, T_1to2, K1, K2, depth_interpolation_mode = 'bili
                     -1 + 1 / n, 1 - 1 / n, n, device=depth1.device
                 )
                 for n in (B, H, W)
-            ]
+            ],
+            indexing = 'ij'
         )
         x1_n = torch.stack((x1_n[2], x1_n[1]), dim=-1).reshape(B, H * W, 2)
         mask, x2 = warp_kpts(
@@ -619,7 +626,8 @@ def get_grid(b, h, w, device):
         *[
             torch.linspace(-1 + 1 / n, 1 - 1 / n, n, device=device)
             for n in (b, h, w)
-        ]
+        ],
+        indexing = 'ij'
     )
     grid = torch.stack((grid[2], grid[1]), dim=-1).reshape(b, h, w, 2)
     return grid

@@ -45,7 +45,7 @@ class RobustLosses(nn.Module):
             B, C, H, W = scale_gm_cls.shape
             device = x2.device
             cls_res = round(math.sqrt(C))
-            G = torch.meshgrid(*[torch.linspace(-1+1/cls_res, 1 - 1/cls_res, steps = cls_res,device = device) for _ in range(2)])
+            G = torch.meshgrid(*[torch.linspace(-1+1/cls_res, 1 - 1/cls_res, steps = cls_res,device = device) for _ in range(2)], indexing='ij')
             G = torch.stack((G[1], G[0]), dim = -1).reshape(C,2)
             GT = (G[None,:,None,None,:]-x2[:,None]).norm(dim=-1).min(dim=1).indices
         cls_loss = F.cross_entropy(scale_gm_cls, GT, reduction  = 'none')[prob > 0.99]
@@ -69,9 +69,9 @@ class RobustLosses(nn.Module):
             G = torch.stack((G[1], G[0]), dim = -1).reshape(C,2) * offset_scale
             GT = (G[None,:,None,None,:] + flow_pre_delta[:,None] - x2[:,None]).norm(dim=-1).min(dim=1).indices
         cls_loss = F.cross_entropy(delta_cls, GT, reduction  = 'none')[prob > 0.99]
+        certainty_loss = F.binary_cross_entropy_with_logits(certainty[:,0], prob)
         if not torch.any(cls_loss):
             cls_loss = (certainty_loss * 0.0)  # Prevent issues where prob is 0 everywhere
-        certainty_loss = F.binary_cross_entropy_with_logits(certainty[:,0], prob)
         losses = {
             f"delta_certainty_loss_{scale}": certainty_loss.mean(),
             f"delta_cls_loss_{scale}": cls_loss.mean(),

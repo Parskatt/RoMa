@@ -19,7 +19,9 @@ def local_correlation(
                 (
                     torch.linspace(-1 + 1 / h, 1 - 1 / h, h, device=feature0.device),
                     torch.linspace(-1 + 1 / w, 1 - 1 / w, w, device=feature0.device),
-                ))
+                ),
+                indexing = 'ij'
+                )
         coords = torch.stack((coords[1], coords[0]), dim=-1)[
             None
         ].expand(B, h, w, 2)
@@ -29,7 +31,9 @@ def local_correlation(
                 (
                     torch.linspace(-2*local_radius/h, 2*local_radius/h, 2*r+1, device=feature0.device),
                     torch.linspace(-2*local_radius/w, 2*local_radius/w, 2*r+1, device=feature0.device),
-                ))
+                ),
+                indexing = 'ij'
+                )
     local_window = torch.stack((local_window[1], local_window[0]), dim=-1)[
             None
         ].expand(1, 2*r+1, 2*r+1, 2).reshape(1, (2*r+1)**2, 2)
