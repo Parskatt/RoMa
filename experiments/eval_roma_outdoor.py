@@ -1,16 +1,7 @@
-import os
-import torch
-from argparse import ArgumentParser
-
-from torch import nn
-from torch.utils.data import ConcatDataset
-import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
 import json
-import wandb
 
 from romatch.benchmarks import MegadepthDenseBenchmark
-from romatch.benchmarks import MegaDepthPoseEstimationBenchmark, MegadepthDenseBenchmark, HpatchesHomogBenchmark
+from romatch.benchmarks import MegaDepthPoseEstimationBenchmark, HpatchesHomogBenchmark
 from romatch.benchmarks import Mega1500PoseLibBenchmark
 
 def test_mega_8_scenes(model, name):
@@ -58,7 +49,8 @@ def test_hpatches(model, name):
 
 if __name__ == "__main__":
     from romatch import roma_outdoor
-    model = roma_outdoor(device = "cuda", coarse_res = 672, upsample_res = 1344)
+    device = "cpu"
+    model = roma_outdoor(device = device, coarse_res = 672, upsample_res = 1344)
     experiment_name = "roma_latest"
     test_mega1500(model, experiment_name)
     #test_mega1500_poselib(model, experiment_name)
