@@ -60,6 +60,6 @@ if __name__ == "__main__":
     from romatch import roma_outdoor
     model = roma_outdoor(device = "cuda", coarse_res = 672, upsample_res = 1344)
     experiment_name = "roma_latest"
-    #test_mega1500(model, experiment_name)
-    test_mega1500_poselib(model, experiment_name)
+    test_mega1500(model, experiment_name)
+    #test_mega1500_poselib(model, experiment_name)
     
