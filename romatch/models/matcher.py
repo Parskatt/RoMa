@@ -434,6 +434,7 @@ class RegressionMatcher(nn.Module):
         recrop_upsample = False,
     ):
         super().__init__()
+        raise NotImplementedError("Possibly bugged, please use commit ca2615f for now. Should be fixed soon.")
         self.attenuate_cert = attenuate_cert
         self.encoder = encoder
         self.decoder = decoder
