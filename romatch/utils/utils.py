@@ -308,7 +308,11 @@ def cls_to_flow_refine(cls):
         indexing = 'ij'
         )
     G = torch.stack([G[1],G[0]],dim=-1).reshape(C,2)
-    cls = cls.softmax(dim=1)
+    # FIXME: below softmax line causes mps to bug, don't know why.
+    if device.type == 'mps':
+        cls = cls.log_softmax(dim=1).exp()
+    else:
+        cls = cls.softmax(dim=1)
     mode = cls.max(dim=1).indices
     
     index = torch.stack((mode-1, mode, mode+1, mode - res, mode + res), dim = 1).clamp(0,C - 1).long()
@@ -645,4 +649,6 @@ def get_autocast_params(device=None, enabled=False, dtype=None):
     else:
         out_dtype = torch.bfloat16
         enabled = False
+        # mps is not supported
+        autocast_device = "cpu"
     return autocast_device, enabled, out_dtype
