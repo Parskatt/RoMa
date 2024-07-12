@@ -70,9 +70,8 @@ if __name__ == "__main__":
     certainty1 = F.avg_pool2d(certainty1[None], kernel_size=5, stride=1, padding=2)[0]
     certainty2 = F.avg_pool2d(certainty2[None], kernel_size=5, stride=1, padding=2)[0]
     
-    vis_im2 = certainty2 * x2 + (1 - certainty2) * white_im2
     vis_im1 = certainty1 * x1 + (1 - certainty1) * white_im1
+    vis_im2 = certainty2 * x2 + (1 - certainty2) * white_im2
     
-    from romatch.utils import tensor_to_pil
     tensor_to_pil(vis_im1, unnormalize=False).save(args.save_A_path)
     tensor_to_pil(vis_im2, unnormalize=False).save(args.save_B_path)
