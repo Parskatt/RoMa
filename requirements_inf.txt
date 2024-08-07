@@ -1,0 +1,7 @@
+-f https://download.pytorch.org/whl/cpu
+
+torch
+einops
+torchvision
+kornia
+tqdm
