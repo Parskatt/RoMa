@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Tuple
 import torch
 from .roma_models import roma_model, tiny_roma_v1_model
 
@@ -27,7 +27,7 @@ def tiny_roma_v1_outdoor(device, weights = None, xfeat = None):
 
     return tiny_roma_v1_model(weights = weights, xfeat = xfeat).to(device) 
 
-def roma_outdoor(device, weights=None, dinov2_weights=None, coarse_res: Union[int,tuple[int,int]] = 560, upsample_res: Union[int,tuple[int,int]] = 864, amp_dtype: torch.dtype = torch.float16):
+def roma_outdoor(device, weights=None, dinov2_weights=None, coarse_res: Union[int,Tuple[int,int]] = 560, upsample_res: Union[int,Tuple[int,int]] = 864, amp_dtype: torch.dtype = torch.float16):
     if isinstance(coarse_res, int):
         coarse_res = (coarse_res, coarse_res)
     if isinstance(upsample_res, int):    
@@ -51,7 +51,7 @@ def roma_outdoor(device, weights=None, dinov2_weights=None, coarse_res: Union[in
     print(f"Using coarse resolution {coarse_res}, and upsample res {model.upsample_res}")
     return model
 
-def roma_indoor(device, weights=None, dinov2_weights=None, coarse_res: Union[int,tuple[int,int]] = 560, upsample_res: Union[int,tuple[int,int]] = 864, amp_dtype: torch.dtype = torch.float16):
+def roma_indoor(device, weights=None, dinov2_weights=None, coarse_res: Union[int,Tuple[int,int]] = 560, upsample_res: Union[int,Tuple[int,int]] = 864, amp_dtype: torch.dtype = torch.float16):
     if isinstance(coarse_res, int):
         coarse_res = (coarse_res, coarse_res)
     if isinstance(upsample_res, int):    
