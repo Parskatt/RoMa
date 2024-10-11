@@ -1,18 +1,19 @@
-import os
 import math
+import os
+import warnings
+from warnings import warn
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
-import warnings
-from warnings import warn
 from PIL import Image
-
 from romatch.utils import get_tuple_transform_ops
+from romatch.utils.kde import kde
 from romatch.utils.local_correlation import local_correlation
 from romatch.utils.utils import cls_to_flow_refine, get_autocast_params
-from romatch.utils.kde import kde
+
 
 class ConvRefiner(nn.Module):
     def __init__(
@@ -654,7 +655,12 @@ class RegressionMatcher(nn.Module):
                 test_transform = get_tuple_transform_ops(
                     resize=(hs, ws), normalize=True
                 )
-                im_A, im_B = test_transform((Image.open(im_A_path).convert('RGB'), Image.open(im_B_path).convert('RGB')))
+                if isinstance(im_A_path, (str, os.PathLike)):
+                    im_A, im_B = Image.open(im_A_path).convert("RGB"), Image.open(im_B_path).convert("RGB")
+                else:
+                    im_A, im_B = im_A_path, im_B_path 
+                im_A, im_B = test_transform((im_A, im_B))
+
                 im_A, im_B = im_A[None].to(device), im_B[None].to(device)
                 scale_factor = math.sqrt(self.upsample_res[0] * self.upsample_res[1] / (self.w_resized * self.h_resized))
                 batch = {"im_A": im_A, "im_B": im_B, "corresps": finest_corresps}
