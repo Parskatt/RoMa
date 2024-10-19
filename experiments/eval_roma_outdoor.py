@@ -49,7 +49,7 @@ def test_hpatches(model, name):
 
 if __name__ == "__main__":
     from romatch import roma_outdoor
-    device = "cpu"
+    device = "cuda"
     model = roma_outdoor(device = device, coarse_res = 672, upsample_res = 1344)
     experiment_name = "roma_latest"
     test_mega1500(model, experiment_name)
