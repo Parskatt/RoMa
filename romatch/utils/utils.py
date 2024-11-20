@@ -652,3 +652,11 @@ def get_autocast_params(device=None, enabled=False, dtype=None):
         # mps is not supported
         autocast_device = "cpu"
     return autocast_device, enabled, out_dtype
+
+def check_not_i16(im):
+    if im.mode == "I;16":
+        raise NotImplementedError("Can't handle 16 bit images")
+
+def check_rgb(im):
+    if im.mode != "RGB":
+        raise NotImplementedError("Can't handle non-RGB images")
