@@ -30,7 +30,6 @@ def test_inference_time(model, name):
         )
     end_time = time.time()
     return (end_time - start_time) / T
-    # json.dump(megadense_results, open(f"results/mega_dense_{name}.json", "w"))
 
 
 if __name__ == "__main__":
