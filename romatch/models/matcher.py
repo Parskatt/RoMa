@@ -515,7 +515,6 @@ class Decoder(nn.Module):
                 if self.detach:
                     flow = flow.detach()
                     certainty = certainty.detach()
-            # torch.cuda.empty_cache()
         return corresps
 
 
@@ -768,6 +767,8 @@ class RegressionMatcher(nn.Module):
         im_A_input,
         im_B_input,
         *args,
+        im_A_high_res=None,
+        im_B_high_res=None,
         batched=False,
         device=None,
     ):
@@ -780,6 +781,8 @@ class RegressionMatcher(nn.Module):
         symmetric = self.symmetric
         self.train(False)
         if not batched:
+            assert isinstance(im_A, Image.Image), f"Unsupported input type: {type(im_A)=}"
+            assert isinstance(im_B, Image.Image), f"Unsupported input type: {type(im_B)=}"
             b = 1
             w, h = im_A.size
             w2, h2 = im_B.size
@@ -825,8 +828,8 @@ class RegressionMatcher(nn.Module):
                 factor * low_res_certainty * (low_res_certainty < cert_clamp)
             )
 
-        if self.upsample_preds:
-            finest_corresps = corresps[finest_scale]
+        finest_corresps = corresps[finest_scale]
+        if self.upsample_preds and im_A_high_res is None and im_B_high_res is None:
             torch.cuda.empty_cache()
             test_transform = get_tuple_transform_ops(resize=(hs, ws), normalize=True)
             if isinstance(im_A_input, (str, os.PathLike)):
@@ -837,15 +840,24 @@ class RegressionMatcher(nn.Module):
                     )
                 )
             else:
+                assert isinstance(im_A_input, Image.Image), f"Unsupported input type: {type(im_A_input)=}"
+                assert isinstance(im_B_input, Image.Image), f"Unsupported input type: {type(im_B_input)=}"
                 im_A, im_B = test_transform((im_A_input, im_B_input))
 
             im_A, im_B = im_A[None].to(device), im_B[None].to(device)
+            
+            batch = {"im_A": im_A, "im_B": im_B, "corresps": finest_corresps}
+        elif self.upsample_preds and im_A_high_res is not None and im_B_high_res is not None:
+            batch = {"im_A": im_A_high_res, "im_B": im_B_high_res, "corresps": finest_corresps}
+        elif self.upsample_preds:
+            raise ValueError(f"Invalid upsample_preds and high_res inputs with {im_A=},{im_A_high_res=},{im_B=} and {im_B_high_res=}")
+
+        if self.upsample_preds:
             scale_factor = math.sqrt(
                 self.upsample_res[0]
                 * self.upsample_res[1]
                 / (self.w_resized * self.h_resized)
             )
-            batch = {"im_A": im_A, "im_B": im_B, "corresps": finest_corresps}
             if symmetric:
                 corresps = self.forward_symmetric(
                     batch, upsample=True, batched=True, scale_factor=scale_factor

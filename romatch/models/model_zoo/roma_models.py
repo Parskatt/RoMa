@@ -129,7 +129,6 @@ def roma_model(resolution, upsample_preds, device = None, weights=None, dinov2_w
             pretrained=False,
             amp = True),
         amp = True,
-        use_vgg = True,
         dinov2_weights = dinov2_weights,
         amp_dtype=amp_dtype,
     )

@@ -1,6 +1,8 @@
 from typing import Union
 import torch
 from .roma_models import roma_model, tiny_roma_v1_model
+from loguru import logger
+
 
 weight_urls = {
     "romatch": {
@@ -68,7 +70,7 @@ def roma_outdoor(
         use_custom_corr=use_custom_corr,
     )
     model.upsample_res = upsample_res
-    print(
+    logger.info(
         f"Using coarse resolution {coarse_res}, and upsample res {model.upsample_res}"
     )
     return model
