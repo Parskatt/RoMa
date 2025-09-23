@@ -1,0 +1,21 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+      - johan/pypi-ci
+  pull_request:
+    branches:
+      - main
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11, 3.12, 3.13]
+    steps:
+      - name: Build and smoke test
+        uses: ./.github/actions/uv-build
+        with:
+          python-version: ${{ matrix.python-version }}
