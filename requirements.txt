@@ -11,4 +11,4 @@ h5py
 wandb
 timm
 poselib
-#xformers # Optional, used for memefficient attention
+fused-local-corr>=0.2.2

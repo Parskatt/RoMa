@@ -1,0 +1,38 @@
+[project]
+name = "romatch"
+version = "0.1.0"
+description = "Robust Dense Feature Matching"
+readme = "README.md"
+authors = [
+    { name = "Johan Edstedt", email = "johan.edstedt@liu.se" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "albumentations",
+    "einops",
+    "fused-local-corr>=0.2.2",
+    "h5py",
+    "kornia",
+    "loguru",
+    "matplotlib",
+    "opencv-python",
+    "poselib>=2.0.4",
+    "timm",
+    "torch>=2.5.1",
+    "torchvision",
+    "tqdm",
+    "wandb",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.14,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "romatch"
+module-root = ""
+
+[dependency-groups]
+dev = [
+    "ruff>=0.13.1",
+]

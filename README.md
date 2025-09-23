@@ -26,10 +26,15 @@
 </p>
 
 ## Setup/Install
-In your python environment (tested on Linux python 3.10), run:
+In your python environment (tested on Linux python 3.12), run:
 ```bash
 pip install -e .
 ```
+or 
+``bash
+uv sync
+``
+
 ## Demo / How to Use
 We provide two demos in the [demos folder](demo).
 Here's the gist of it:
@@ -110,6 +115,17 @@ IMC22 :'):
 | XFeat*    |  -   |
 | Tiny RoMa v1    | 42.2 |
 | RoMa    |  -   |
+
+## Reproducibility
+There are a few diffs in the current codebase compared to the original repo used to run experiments.
+
+1. The `scale_factor` used in the `match` method now is relative to the original training resolution of `560`. Previosly it was based on the set coarse resolution (which might or might not be `560`).
+2. Newer PyTorch, original code used something like `2.1`.
+3. Stochastic eval: both RANSAC and the chosen correspondences can affect results in `Mega1500`.
+4. Matrix inverse in GP has been replaced with cholesky decomp.
+
+That being said, if diff of results are $>0.5$ there probably is something wrong, please let me know.
+
 
 ## BibTeX
 If you find our models useful, please consider citing our paper!

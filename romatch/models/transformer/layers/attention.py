@@ -12,6 +12,7 @@ import logging
 
 from torch import Tensor
 from torch import nn
+import torch
 
 
 logger = logging.getLogger("dinov2")
@@ -47,6 +48,20 @@ class Attention(nn.Module):
         self.proj_drop = nn.Dropout(proj_drop)
 
     def forward(self, x: Tensor) -> Tensor:
+        # use new pytorch native attn
+        qkv = self.qkv(x)
+        B, N, _ = qkv.shape
+        C = self.qkv.in_features
+
+        qkv = qkv.reshape(B, N, 3, self.num_heads, C // self.num_heads)
+        q, k, v = torch.unbind(qkv, 2)
+        q, k, v = [t.transpose(1, 2) for t in [q, k, v]]
+        x = torch.nn.functional.scaled_dot_product_attention(q, k, v)
+        x = x.transpose(1, 2).reshape([B, N, C])
+        x = self.proj(x)
+        x = self.proj_drop(x)
+        return x
+        # old code below
         B, N, C = x.shape
         qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
 

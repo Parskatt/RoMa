@@ -7,7 +7,6 @@ from torchvision import transforms
 from torchvision.transforms.functional import InterpolationMode
 import torch.nn.functional as F
 from PIL import Image
-import kornia
 
 def recover_pose(E, kpts0, kpts1, K0, K1, mask):
     best_num_inliers = 0
@@ -144,7 +143,7 @@ def pose_auc(errors, thresholds):
         last_index = np.searchsorted(errors, t)
         r = np.r_[recall[:last_index], recall[last_index - 1]]
         e = np.r_[errors[:last_index], t]
-        aucs.append(np.trapz(r, x=e) / t)
+        aucs.append(np.trapz(r, x=e).item() / t)
     return aucs
 
 

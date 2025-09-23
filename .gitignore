@@ -9,3 +9,4 @@ jobs/*
 *ignore_me*
 *.pth
 wandb*
+results/*
