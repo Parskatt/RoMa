@@ -13,6 +13,8 @@ jobs:
       matrix:
         python-version: [3.9, 3.10, 3.11, 3.12, 3.13]
     steps:
+      - name: Checkout
+        uses: actions/checkout@v5
       - name: Build and smoke test
         uses: ./.github/actions/uv-build
         with:
@@ -27,6 +29,8 @@ jobs:
       id-token: write
       contents: read
     steps:
+      - name: Checkout
+        uses: actions/checkout@v5
       - name: Build and smoke test
         uses: ./.github/actions/uv-build
         with:
