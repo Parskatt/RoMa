@@ -1,7 +1,7 @@
 import os
 import torch
 from argparse import ArgumentParser
-
+from warnings import warn
 from torch import nn
 from torch.utils.data import ConcatDataset
 import torch.distributed as dist
@@ -286,6 +286,8 @@ def test_scannet(model, name, resolution, sample_mode):
 
 if __name__ == "__main__":
     import warnings
+    warn('Current version of romatch is not tested for training, use at your own risk.')
+
     warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is deprecated')
     warnings.filterwarnings('ignore')#, category=UserWarning)#, message='WARNING batched routines are designed for small sizes.')
     os.environ["TORCH_CUDNN_V8_API_ENABLED"] = "1" # For BF16 computations

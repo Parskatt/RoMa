@@ -1,7 +1,7 @@
 import os
 import torch
 from argparse import ArgumentParser
-
+from warnings import warn
 from torch import nn
 from torch.utils.data import ConcatDataset
 import torch.distributed as dist
@@ -292,6 +292,7 @@ if __name__ == "__main__":
     os.environ["TORCH_CUDNN_V8_API_ENABLED"] = "1" # For BF16 computations
     os.environ["OMP_NUM_THREADS"] = "16"
     torch.backends.cudnn.allow_tf32 = True # allow tf32 on cudnn
+    warn('Current version of romatch is not tested for training, use at your own risk.')
     import romatch
     parser = ArgumentParser()
     parser.add_argument("--only_test", action='store_true')

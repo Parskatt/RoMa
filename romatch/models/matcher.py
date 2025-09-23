@@ -17,7 +17,7 @@ from romatch.utils.utils import (
     check_not_i16,
 )
 from romatch.utils.kde import kde
-
+from romatch.models.encoders import CNNandDinov2
 
 class ConvRefiner(nn.Module):
     def __init__(
@@ -546,8 +546,8 @@ def _check_input(im_input):
 class RegressionMatcher(nn.Module):
     def __init__(
         self,
-        encoder,
-        decoder,
+        encoder: CNNandDinov2,
+        decoder: Decoder,
         h=448,
         w=448,
         sample_mode="threshold_balanced",
@@ -765,6 +765,10 @@ class RegressionMatcher(nn.Module):
                 return torch.cat((inds_A, inds_B), dim=-1)
             else:
                 return torch.cat((x_A[inds_A], x_B[inds_B]), dim=-1)
+    
+    def _get_device(self):
+        # let's hope this is same for all weights
+        return self.encoder.cnn.layers[0].weight.device
 
     @torch.inference_mode()
     def match(
@@ -777,10 +781,11 @@ class RegressionMatcher(nn.Module):
         batched=True,
         device=None,
     ):
+        self.train(False)
         if not batched:
             raise ValueError("batched must be True, non-batched inference is no longer supported.")
         if device is None and not isinstance(im_A_input, torch.Tensor):
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            device = self._get_device()
         elif device is None and isinstance(im_A_input, torch.Tensor):
             device = im_A_input.device
 
@@ -788,7 +793,6 @@ class RegressionMatcher(nn.Module):
         im_A = _check_input(im_A_input)
         im_B = _check_input(im_B_input)
         symmetric = self.symmetric
-        self.train(False)
         ws = self.w_resized
         hs = self.h_resized
 
