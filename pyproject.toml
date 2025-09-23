@@ -17,7 +17,6 @@ dependencies = [
     "matplotlib",
     "opencv-python",
     "poselib>=2.0.4",
-    "slurm-util>=0.2.4", # todo: remove before PR
     "timm",
     "torch>=2.5.1",
     "torchvision",

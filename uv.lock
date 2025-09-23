@@ -1938,7 +1938,6 @@ dependencies = [
     { name = "matplotlib", version = "3.10.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "opencv-python" },
     { name = "poselib" },
-    { name = "slurm-util" },
     { name = "timm" },
     { name = "torch" },
     { name = "torchvision" },
@@ -1962,7 +1961,6 @@ requires-dist = [
     { name = "matplotlib" },
     { name = "opencv-python" },
     { name = "poselib", specifier = ">=2.0.4" },
-    { name = "slurm-util", specifier = ">=0.2.4" },
     { name = "timm" },
     { name = "torch", specifier = ">=2.5.1" },
     { name = "torchvision" },
@@ -2318,15 +2316,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
-]
-
-[[package]]
-name = "slurm-util"
-version = "0.2.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5b/25/88fa9846d15238c7948924bfc60c78ea30a49e7af867b4b61cd676378daf/slurm_util-0.2.4.tar.gz", hash = "sha256:dfc970a677a0cba9808cc6b047d8ca5f947d89b18d4c5239ccc81e4f5bebeb1a", size = 6660, upload-time = "2025-09-11T20:41:39.594Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/18/b7/e008b3fad90897304353a27ed0e507e2363e6bbfdf01eded0022e5dd0fb4/slurm_util-0.2.4-py3-none-any.whl", hash = "sha256:f78433f392543bab777ffc2795fb32d050adb05cf1afd137a45549a869d62af9", size = 8529, upload-time = "2025-09-11T20:41:38.175Z" },
 ]
 
 [[package]]
