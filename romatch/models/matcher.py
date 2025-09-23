@@ -296,21 +296,27 @@ class GP(nn.Module):
         K_xy = self.K(x, y)
         K_yx = K_xy.permute(0, 2, 1)
         sigma_noise = self.sigma_noise * torch.eye(h2 * w2, device=x.device)[None, :, :]
-        with warnings.catch_warnings():
+        if self.training:
             K_yy_inv = torch.linalg.inv(K_yy + sigma_noise)
-
-        mu_x = K_xy.matmul(K_yy_inv.matmul(f))
-        mu_x = rearrange(mu_x, "b (h w) d -> b d h w", h=h1, w=w1)
-        if not self.no_cov:
-            cov_x = K_xx - K_xy.matmul(K_yy_inv.matmul(K_yx))
-            cov_x = rearrange(
-                cov_x, "b (h w) (r c) -> b h w r c", h=h1, w=w1, r=h1, c=w1
-            )
-            local_cov_x = self.get_local_cov(cov_x)
-            local_cov_x = rearrange(local_cov_x, "b h w K -> b K h w")
-            gp_feats = torch.cat((mu_x, local_cov_x), dim=1)
+            mu_x = K_xy.matmul(K_yy_inv.matmul(f))
         else:
-            gp_feats = mu_x
+            # faster inference, possibly also useful for training
+            L_t = torch.linalg.cholesky(K_yy + sigma_noise)
+            pos_emb = torch.cholesky_solve(f.reshape(b, h2 * w2, d), L_t, upper=False)
+            mu_x = K_xy @ pos_emb
+        mu_x = rearrange(mu_x, "b (h w) d -> b d h w", h=h1, w=w1)
+
+
+        # if not self.no_cov:
+        #     cov_x = K_xx - K_xy.matmul(K_yy_inv.matmul(K_yx))
+        #     cov_x = rearrange(
+        #         cov_x, "b (h w) (r c) -> b h w r c", h=h1, w=w1, r=h1, c=w1
+        #     )
+        #     local_cov_x = self.get_local_cov(cov_x)
+        #     local_cov_x = rearrange(local_cov_x, "b h w K -> b K h w")
+        #     gp_feats = torch.cat((mu_x, local_cov_x), dim=1)
+        # else:
+        gp_feats = mu_x
         return gp_feats
 
 

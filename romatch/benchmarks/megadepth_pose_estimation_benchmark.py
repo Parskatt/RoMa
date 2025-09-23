@@ -3,9 +3,6 @@ import torch
 from romatch.utils import *
 from PIL import Image
 from tqdm import tqdm
-import torch.nn.functional as F
-import romatch
-import kornia.geometry.epipolar as kepi
 
 class MegaDepthPoseEstimationBenchmark:
     def __init__(self, data_root="data/megadepth", scene_names = None) -> None:
@@ -39,7 +36,7 @@ class MegaDepthPoseEstimationBenchmark:
                 poses = scene["poses"]
                 im_paths = scene["image_paths"]
                 pair_inds = range(len(pairs))
-                for pairind in tqdm(pair_inds):
+                for pairind in (pbar := tqdm(pair_inds, desc = "Current AUC: ?")):
                     idx1, idx2 = pairs[pairind][0]
                     K1 = intrinsics[idx1].copy()
                     T1 = poses[idx1].copy()
@@ -98,6 +95,8 @@ class MegaDepthPoseEstimationBenchmark:
                         tot_e_t.append(e_t)
                         tot_e_R.append(e_R)
                         tot_e_pose.append(e_pose)
+                        pbar.set_description(f"Current AUC: {pose_auc(tot_e_pose, thresholds)}")
+
             tot_e_pose = np.array(tot_e_pose)
             auc = pose_auc(tot_e_pose, thresholds)
             acc_5 = (tot_e_pose < 5).mean()

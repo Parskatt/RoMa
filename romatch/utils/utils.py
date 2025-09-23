@@ -7,7 +7,6 @@ from torchvision import transforms
 from torchvision.transforms.functional import InterpolationMode
 import torch.nn.functional as F
 from PIL import Image
-import kornia
 
 def recover_pose(E, kpts0, kpts1, K0, K1, mask):
     best_num_inliers = 0

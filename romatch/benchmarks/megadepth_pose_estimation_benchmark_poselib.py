@@ -3,9 +3,6 @@ import torch
 from romatch.utils import *
 from PIL import Image
 from tqdm import tqdm
-import torch.nn.functional as F
-import romatch
-import kornia.geometry.epipolar as kepi
 
 # wrap cause pyposelib is still in dev
 # will add in deps later
