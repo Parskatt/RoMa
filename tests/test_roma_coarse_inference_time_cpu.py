@@ -23,7 +23,7 @@ def test_inference_time(model, name):
 
 
 if __name__ == "__main__":
-    device = "cuda"
+    device = "cpu"
     model = roma_outdoor(
         device=device,
         coarse_res=560,

@@ -772,8 +772,10 @@ class RegressionMatcher(nn.Module):
         batched=False,
         device=None,
     ):
-        if device is None:
+        if device is None and not isinstance(im_A_input, torch.Tensor):
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        elif device is None and isinstance(im_A_input, torch.Tensor):
+            device = im_A_input.device
 
         # Check if inputs are file paths or already loaded images
         im_A = _check_input(im_A_input)
