@@ -291,7 +291,7 @@ class GP(nn.Module):
         f = self.get_pos_enc(y)
         b, d, h2, w2 = f.shape
         x, y, f = self.reshape(x.float()), self.reshape(y.float()), self.reshape(f)
-        K_xx = self.K(x, x)
+        # K_xx = self.K(x, x)
         K_yy = self.K(y, y)
         K_xy = self.K(x, y)
         K_yx = K_xy.permute(0, 2, 1)
@@ -864,7 +864,7 @@ class RegressionMatcher(nn.Module):
             scale_factor = math.sqrt(
                 self.upsample_res[0]
                 * self.upsample_res[1]
-                / (self.w_resized * self.h_resized)
+                / (560**2) # divide by training resolution
             )
             if symmetric:
                 corresps = self.forward_symmetric(
