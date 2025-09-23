@@ -31,9 +31,9 @@ In your python environment (tested on Linux python 3.12), run:
 pip install -e .
 ```
 or 
-``bash
+```bash
 uv sync
-``
+```
 
 ## Demo / How to Use
 We provide two demos in the [demos folder](demo).
