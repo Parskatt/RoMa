@@ -1,4 +1,3 @@
-import json
 from romatch.benchmarks import MegaDepthPoseEstimationBenchmark
 import numpy as np
 

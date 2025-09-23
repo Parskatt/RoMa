@@ -1,7 +1,4 @@
-import json
-import numpy as np
 from romatch import roma_outdoor
-from romatch.benchmarks import MegadepthDenseBenchmark
 import torch
 from tqdm import tqdm
 import time

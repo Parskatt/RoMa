@@ -1,6 +1,4 @@
-import json
 from romatch.benchmarks import Mega1500PoseLibBenchmark
-import numpy as np
 
 def test_mega1500_poselib(model, name):
     mega1500_benchmark = Mega1500PoseLibBenchmark("data/megadepth")
