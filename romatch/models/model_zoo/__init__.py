@@ -109,7 +109,7 @@ def roma_indoor(
         amp_dtype=amp_dtype,
     )
     model.upsample_res = upsample_res
-    print(
+    logger.info(
         f"Using coarse resolution {coarse_res}, and upsample res {model.upsample_res}"
     )
     return model

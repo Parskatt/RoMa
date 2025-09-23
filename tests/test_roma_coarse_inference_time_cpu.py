@@ -5,12 +5,9 @@ import time
 
 
 def test_inference_time(model, name):
-    T = 1000
+    T = 5
     im_A = torch.randn(8, 3, 560, 560).to(device)
     im_B = torch.randn(8, 3, 560, 560).to(device)
-    # burn in
-    for i in range(10):
-        model.match(im_A, im_B, batched=True)
     start_time = time.time()
     for t in tqdm(range(T)):
         model.match(im_A, im_B, batched=True)

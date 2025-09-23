@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
-import warnings
 from warnings import warn
 from PIL import Image
 
@@ -775,9 +774,11 @@ class RegressionMatcher(nn.Module):
         *args,
         im_A_high_res=None,
         im_B_high_res=None,
-        batched=False,
+        batched=True,
         device=None,
     ):
+        if not batched:
+            raise ValueError("batched must be True, non-batched inference is no longer supported.")
         if device is None and not isinstance(im_A_input, torch.Tensor):
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         elif device is None and isinstance(im_A_input, torch.Tensor):
@@ -788,22 +789,22 @@ class RegressionMatcher(nn.Module):
         im_B = _check_input(im_B_input)
         symmetric = self.symmetric
         self.train(False)
-        if not batched:
-            assert isinstance(im_A, Image.Image), f"Unsupported input type: {type(im_A)=}"
-            assert isinstance(im_B, Image.Image), f"Unsupported input type: {type(im_B)=}"
+        ws = self.w_resized
+        hs = self.h_resized
+
+        scale_factor = math.sqrt(hs * ws / (560**2)) # divide by training resolution
+        if isinstance(im_A, Image.Image) and isinstance(im_B, Image.Image):
             b = 1
             w, h = im_A.size
             w2, h2 = im_B.size
             # Get images in good format
-            ws = self.w_resized
-            hs = self.h_resized
 
             test_transform = get_tuple_transform_ops(
                 resize=(hs, ws), normalize=True, clahe=False
             )
             im_A, im_B = test_transform((im_A, im_B))
             batch = {"im_A": im_A[None].to(device), "im_B": im_B[None].to(device)}
-        else:
+        elif isinstance(im_A, torch.Tensor) and isinstance(im_B, torch.Tensor):
             b, c, h, w = im_A.shape
             b, c, h2, w2 = im_B.shape
             assert w == w2 and h == h2, "For batched images we assume same size"
@@ -813,12 +814,14 @@ class RegressionMatcher(nn.Module):
                     "Model resolution and batch resolution differ, may produce unexpected results"
                 )
             hs, ws = h, w
+        else:
+            raise ValueError(f"Unsupported input type: {type(im_A)=} and {type(im_B)=}")
         finest_scale = 1
         # Run matcher
         if symmetric:
-            corresps = self.forward_symmetric(batch)
+            corresps = self.forward_symmetric(batch, scale_factor=scale_factor)
         else:
-            corresps = self.forward(batch, batched=True)
+            corresps = self.forward(batch, batched=True, scale_factor=scale_factor)
 
         if self.upsample_preds:
             hs, ws = self.upsample_res

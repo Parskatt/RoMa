@@ -5,7 +5,7 @@ import time
 
 
 def test_inference_time(model, name):
-    T = 1000
+    T = 100
     im_A = torch.randn(8, 3, 560, 560).to(device)
     im_B = torch.randn(8, 3, 560, 560).to(device)
     # burn in

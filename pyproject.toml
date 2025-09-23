@@ -17,7 +17,7 @@ dependencies = [
     "matplotlib",
     "opencv-python",
     "poselib>=2.0.4",
-    "slurm-util>=0.2.4",
+    "slurm-util>=0.2.4", # todo: remove before PR
     "timm",
     "torch>=2.5.1",
     "torchvision",
@@ -32,3 +32,8 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = "romatch"
 module-root = ""
+
+[dependency-groups]
+dev = [
+    "ruff>=0.13.1",
+]
