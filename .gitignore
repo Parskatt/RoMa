@@ -9,3 +9,5 @@ jobs/*
 *ignore_me*
 *.pth
 wandb*
+uv.lock
+results/*
