@@ -1,17 +1,21 @@
-from functools import partial
+import sys
 import warnings
-import torch.nn as nn
+from functools import partial
+
 import torch
+import torch.nn as nn
+from loguru import logger
+
+from romatch.models.encoders import CNNandDinov2
 from romatch.models.matcher import (
+    GP,
     ConvRefiner,
     CosKernel,
-    GP,
     Decoder,
     RegressionMatcher,
 )
-from romatch.models.transformer import Block, TransformerDecoder, MemEffAttention
-from romatch.models.encoders import CNNandDinov2
 from romatch.models.tiny import TinyRoMa
+from romatch.models.transformer import Block, MemEffAttention, TransformerDecoder
 
 
 def tiny_roma_v1_model(
@@ -32,10 +36,35 @@ def roma_model(
     weights=None,
     dinov2_weights=None,
     amp_dtype: torch.dtype = torch.float16,
-    use_custom_corr=False,
+    use_custom_corr=True,
     symmetric=True,
+    upsample_res=None,
+    sample_thresh=0.05,
+    sample_mode="threshold_balanced",
+    attenuate_cert = True,
     **kwargs,
 ):
+    if sys.platform != "linux":
+        use_custom_corr = False
+        warnings.warn("Local correlation is not supported on non-Linux platforms, setting use_custom_corr to False")
+    if isinstance(resolution, int):
+        resolution = (resolution, resolution)
+    if isinstance(upsample_res, int):
+        upsample_res = (upsample_res, upsample_res)
+
+    if str(device) == "cpu":
+        amp_dtype = torch.float32
+
+    assert resolution[0] % 14 == 0, "Needs to be multiple of 14 for backbone"
+    assert resolution[1] % 14 == 0, "Needs to be multiple of 14 for backbone"
+
+    logger.info(
+        f"Using coarse resolution {resolution}, and upsample res {upsample_res}"
+    )
+
+    if sys.platform != "linux":
+        use_custom_corr = False
+        warnings.warn("Local correlation is not supported on non-Linux platforms, setting use_custom_corr to False")
     warnings.filterwarnings(
         "ignore", category=UserWarning, message="TypedStorage is deprecated"
     )
@@ -158,17 +187,18 @@ def roma_model(
         amp_dtype=amp_dtype,
     )
     h, w = resolution
-    attenuate_cert = True
-    sample_mode = "threshold_balanced"
+    
     matcher = RegressionMatcher(
         encoder,
         decoder,
         h=h,
         w=w,
         upsample_preds=upsample_preds,
+        upsample_res=upsample_res,
         symmetric=symmetric,
         attenuate_cert=attenuate_cert,
         sample_mode=sample_mode,
+        sample_thresh=sample_thresh,
         **kwargs,
     ).to(device)
     matcher.load_state_dict(weights)
