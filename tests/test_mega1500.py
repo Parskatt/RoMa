@@ -16,7 +16,7 @@ if __name__ == "__main__":
     # gotten on 3.12 env with torch 2.8.0
     reference_scores = [0.6271474434923545, 0.7673889435429945, 0.8642099162282599] # slightly worse.
     # old_reference_scores = [0.6235757679569996, 0.7648007367330985, 0.8630483724961098]
-    assert np.isclose(results[0], reference_scores[0], atol=3e-1 / 100)
-    assert np.isclose(results[1], reference_scores[1], atol=2e-1 / 100)
-    assert np.isclose(results[2], reference_scores[2], atol=1e-1 / 100)
+    assert np.isclose(results["auc_5"], reference_scores[0], atol=3e-1 / 100)
+    assert np.isclose(results["auc_10"], reference_scores[1], atol=2e-1 / 100)
+    assert np.isclose(results["auc_20"], reference_scores[2], atol=1e-1 / 100)
     
