@@ -35,9 +35,9 @@ or
 uv sync
 ```
 You can also install `romatch` directly as a package from PyPI by
-``bash
+```bash
 uv pip install romatch
-``
+```
 
 ## Demo / How to Use
 We provide two demos in the [demos folder](demo).
