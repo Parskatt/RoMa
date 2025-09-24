@@ -28,12 +28,16 @@
 ## Setup/Install
 In your python environment (tested on Linux python 3.12), run:
 ```bash
-pip install -e .
+uv pip install -e .
 ```
 or 
 ```bash
 uv sync
 ```
+You can also install `romatch` directly as a package from PyPI by
+``bash
+uv pip install romatch
+``
 
 ## Demo / How to Use
 We provide two demos in the [demos folder](demo).
