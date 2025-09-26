@@ -1,5 +1,6 @@
 import os
 import math
+import sys
 import numpy as np
 import torch
 import torch.nn as nn
@@ -46,6 +47,9 @@ class ConvRefiner(nn.Module):
         use_custom_corr=False,
     ):
         super().__init__()
+        if sys.platform != "linux":
+            warn("Local correlation is not supported on non-Linux platforms, setting use_custom_corr to False")
+            use_custom_corr = False
         self.bn_momentum = bn_momentum
         self.block1 = self.create_block(
             in_dim,
@@ -553,8 +557,10 @@ class RegressionMatcher(nn.Module):
         sample_mode="threshold_balanced",
         upsample_preds=False,
         symmetric=False,
+        sample_thresh=0.05,
         name=None,
         attenuate_cert=None,
+        upsample_res=None,
     ):
         super().__init__()
         self.attenuate_cert = attenuate_cert
@@ -566,9 +572,9 @@ class RegressionMatcher(nn.Module):
         self.og_transforms = get_tuple_transform_ops(resize=None, normalize=True)
         self.sample_mode = sample_mode
         self.upsample_preds = upsample_preds
-        self.upsample_res = (14 * 16 * 6, 14 * 16 * 6)
+        self.upsample_res = upsample_res or (14 * 16 * 6, 14 * 16 * 6)
         self.symmetric = symmetric
-        self.sample_thresh = 0.05
+        self.sample_thresh = sample_thresh
 
     def get_output_resolution(self):
         if not self.upsample_preds:

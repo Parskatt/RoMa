@@ -542,9 +542,9 @@ name = "fused-local-corr"
 version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "torch" },
+    { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10' and sys_platform == 'linux'" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10' and sys_platform == 'linux'" },
+    { name = "torch", marker = "sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c0/72/7fd886f0fcd4b66d10c341d78a960adfab0b807ff1e72998bee123ebcb7a/fused_local_corr-0.2.2-cp310-cp310-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:573a766ae4b108491a085454f6044970b36e9e66259b23a0413ee2d7befb018a", size = 254718, upload-time = "2025-09-10T21:22:30.681Z" },
@@ -1930,7 +1930,7 @@ source = { editable = "." }
 dependencies = [
     { name = "albumentations" },
     { name = "einops" },
-    { name = "fused-local-corr" },
+    { name = "fused-local-corr", marker = "sys_platform == 'linux'" },
     { name = "h5py" },
     { name = "kornia" },
     { name = "loguru" },
@@ -1954,7 +1954,7 @@ dev = [
 requires-dist = [
     { name = "albumentations" },
     { name = "einops" },
-    { name = "fused-local-corr", specifier = ">=0.2.2" },
+    { name = "fused-local-corr", marker = "sys_platform == 'linux'", specifier = ">=0.2.2" },
     { name = "h5py" },
     { name = "kornia" },
     { name = "loguru" },
