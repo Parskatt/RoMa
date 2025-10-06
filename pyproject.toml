@@ -1,6 +1,6 @@
 [project]
 name = "romatch"
-version = "0.1.0"
+version = "0.1.1"
 description = "Robust Dense Feature Matching"
 readme = "README.md"
 authors = [
