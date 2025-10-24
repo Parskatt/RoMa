@@ -1925,12 +1925,11 @@ wheels = [
 
 [[package]]
 name = "romatch"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "albumentations" },
     { name = "einops" },
-    { name = "fused-local-corr", marker = "sys_platform == 'linux'" },
     { name = "h5py" },
     { name = "kornia" },
     { name = "loguru" },
@@ -1945,6 +1944,11 @@ dependencies = [
     { name = "wandb" },
 ]
 
+[package.optional-dependencies]
+fused-local-corr = [
+    { name = "fused-local-corr", marker = "sys_platform == 'linux'" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "ruff" },
@@ -1954,7 +1958,7 @@ dev = [
 requires-dist = [
     { name = "albumentations" },
     { name = "einops" },
-    { name = "fused-local-corr", marker = "sys_platform == 'linux'", specifier = ">=0.2.2" },
+    { name = "fused-local-corr", marker = "sys_platform == 'linux' and extra == 'fused-local-corr'", specifier = ">=0.2.2" },
     { name = "h5py" },
     { name = "kornia" },
     { name = "loguru" },
@@ -1967,6 +1971,7 @@ requires-dist = [
     { name = "tqdm" },
     { name = "wandb" },
 ]
+provides-extras = ["fused-local-corr"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "ruff", specifier = ">=0.13.1" }]

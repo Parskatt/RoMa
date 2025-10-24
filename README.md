@@ -38,6 +38,26 @@ You can also install `romatch` directly as a package from PyPI by
 ```bash
 uv pip install romatch
 ```
+or 
+```bash
+uv add romatch
+```
+
+## Fused local correlation kernel
+Include the `--extra fused-local-corr` flag as:
+```bash
+uv sync --extra fused-local-corr
+```
+or 
+```bash
+uv pip install romatch[fused-local-corr]
+```
+or
+```bash
+uv add romatch[fused-local-corr]
+```
+
+
 
 ## Demo / How to Use
 We provide two demos in the [demos folder](demo).
