@@ -10,7 +10,6 @@ requires-python = ">=3.9"
 dependencies = [
     "albumentations",
     "einops",
-    "fused-local-corr>=0.2.2 ; sys_platform == 'linux'",
     "h5py",
     "kornia",
     "loguru",
@@ -22,6 +21,11 @@ dependencies = [
     "torchvision",
     "tqdm",
     "wandb",
+]
+
+[project.optional-dependencies]
+fused-local-corr = [
+    "fused-local-corr>=0.2.2 ; sys_platform == 'linux'",
 ]
 
 [build-system]
