@@ -588,6 +588,16 @@ class RegressionMatcher(nn.Module):
             return self.upsample_res
 
     def extract_backbone_features(self, batch, batched=True, upsample=False):
+        if 'unique_images' in batch:
+            unique_images = batch['unique_images']
+            im_AB_idx = batch['im_AB_idx']
+            feature_pyramid0 = self.encoder(unique_images, upsample=upsample)
+            feature_pyramid = {
+                scale: feature_pyramid0[scale][im_AB_idx]
+                for scale in feature_pyramid0
+            }
+            return feature_pyramid
+            
         x_q = batch["im_A"]
         x_s = batch["im_B"]
         if batched:
