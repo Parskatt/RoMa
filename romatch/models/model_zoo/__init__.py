@@ -1,6 +1,6 @@
 from typing import Union
 import torch
-from .roma_models import roma_model, tiny_roma_v1_model
+from .roma_models import roma_model,roma_model_pad, tiny_roma_v1_model
 
 
 weight_urls = {
@@ -47,7 +47,7 @@ def roma_outdoor(
         dinov2_weights = torch.hub.load_state_dict_from_url(
             weight_urls["dinov2"], map_location=device
         )
-    model = roma_model(
+    model = roma_model_pad(
         resolution=coarse_res,
         upsample_preds=upsample_preds,
         weights=weights,
@@ -80,7 +80,7 @@ def roma_indoor(
         dinov2_weights = torch.hub.load_state_dict_from_url(
             weight_urls["dinov2"], map_location=device
         )
-    model = roma_model(
+    model = roma_model_pad(
         resolution=coarse_res,
         upsample_preds=upsample_preds,
         weights=weights,

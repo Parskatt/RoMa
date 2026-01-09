@@ -172,6 +172,11 @@ class ConvRefiner(nn.Module):
                 d = torch.cat((x, x_hat), dim=1)
             if self.concat_logits:
                 d = torch.cat((d, logits), dim=1)
+            # pad d if needed
+            channel_d = d.shape[1]
+            channel_block1 = self.block1[0].in_channels
+            if channel_d != channel_block1:
+                d = F.pad(d, (0, 0, 0, 0, 0, channel_block1 - channel_d))
             d = self.block1(d)
             d = self.hidden_blocks(d)
         d = self.out_conv(d.float())
