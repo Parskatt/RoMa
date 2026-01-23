@@ -846,7 +846,7 @@ class RegressionMatcher(nn.Module):
         if symmetric:
             corresps = self.forward_symmetric(batch, scale_factor=scale_factor)
         else:
-            corresps = self.forward(batch, batched=True, scale_factor=scale_factor)
+            corresps = self(batch, batched=True, scale_factor=scale_factor)
 
         if self.upsample_preds:
             hs, ws = self.upsample_res
@@ -899,7 +899,7 @@ class RegressionMatcher(nn.Module):
                     batch, upsample=True, batched=True, scale_factor=scale_factor
                 )
             else:
-                corresps = self.forward(
+                corresps = self(
                     batch, batched=True, upsample=True, scale_factor=scale_factor
                 )
 

@@ -38,7 +38,12 @@ def roma_outdoor(
     symmetric=True,
     use_custom_corr=True,
     upsample_preds=True,
+    with_padding=False,
+    do_compile=False,
 ):
+    if torch.get_float32_matmul_precision() != "highest":
+        raise RuntimeError("Float32 matmul precision must be set to highest for RoMa. See also https://github.com/Parskatt/RoMaV2/issues/35")
+
     if weights is None:
         weights = torch.hub.load_state_dict_from_url(
             weight_urls["romatch"]["outdoor"], map_location=device
@@ -47,7 +52,8 @@ def roma_outdoor(
         dinov2_weights = torch.hub.load_state_dict_from_url(
             weight_urls["dinov2"], map_location=device
         )
-    model = roma_model_pad(
+    model_init = roma_model if not with_padding else roma_model_pad
+    model = model_init(
         resolution=coarse_res,
         upsample_preds=upsample_preds,
         weights=weights,
@@ -58,6 +64,8 @@ def roma_outdoor(
         use_custom_corr=use_custom_corr,
         upsample_res=upsample_res,
     )
+    if do_compile:
+        model.compile()
     return model
 
 
@@ -71,7 +79,12 @@ def roma_indoor(
     symmetric=True,
     use_custom_corr=True,
     upsample_preds=True,
+    with_padding=False,
+    do_compile=False,
 ):
+    if torch.get_float32_matmul_precision() != "highest":
+        raise RuntimeError("Float32 matmul precision must be set to highest for RoMa. See also https://github.com/Parskatt/RoMaV2/issues/35")
+
     if weights is None:
         weights = torch.hub.load_state_dict_from_url(
             weight_urls["romatch"]["indoor"], map_location=device
@@ -80,7 +93,8 @@ def roma_indoor(
         dinov2_weights = torch.hub.load_state_dict_from_url(
             weight_urls["dinov2"], map_location=device
         )
-    model = roma_model_pad(
+    model_init = roma_model if not with_padding else roma_model_pad
+    model = model_init(
         resolution=coarse_res,
         upsample_preds=upsample_preds,
         weights=weights,
@@ -91,4 +105,6 @@ def roma_indoor(
         use_custom_corr=use_custom_corr,
         upsample_res=upsample_res,
     )
+    if do_compile:
+        model.compile()
     return model

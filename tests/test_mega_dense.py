@@ -9,7 +9,7 @@ def test_mega_dense(model, name):
 if __name__ == "__main__":
     from romatch import roma_outdoor
     device = "cuda"
-    model = roma_outdoor(device = device, coarse_res = 560, use_custom_corr=True, symmetric = False, upsample_preds = False)
+    model = roma_outdoor(device = device, coarse_res = 560, use_custom_corr=True, symmetric = False, upsample_preds = False, do_compile = True, with_padding = True)
     experiment_name = "roma_latest"
     results = test_mega_dense(model, experiment_name)
     print(results)
