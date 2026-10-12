@@ -866,7 +866,6 @@ class RegressionMatcher(nn.Module):
 
         finest_corresps = corresps[finest_scale]
         if self.upsample_preds and im_A_high_res is None and im_B_high_res is None:
-            torch.cuda.empty_cache()
             test_transform = get_tuple_transform_ops(resize=(hs, ws), normalize=True)
             if isinstance(im_A_input, (str, os.PathLike)):
                 im_A, im_B = test_transform(
