@@ -445,7 +445,7 @@ class Decoder(nn.Module):
             f1_s, f2_s = f1[ins], f2[ins]
             if new_scale in self.proj:
                 autocast_device, autocast_enabled, autocast_dtype = get_autocast_params(
-                    f1_s.device, str(f1_s) == "cuda", self.amp_dtype
+                    f1_s.device, True, self.amp_dtype
                 )
                 with torch.autocast(
                     autocast_device, enabled=autocast_enabled, dtype=autocast_dtype
